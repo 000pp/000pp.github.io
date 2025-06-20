@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Azure on PWN 2 FUN</title>
+    <link>/tags/azure/</link>
+    <description>PWN 2 FUN (Azure)</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    
+      
+
+      
+    
+
+    
+    <copyright>© 000pp</copyright>
+    <lastBuildDate>Fri, 22 Nov 2024 00:00:00 +0000</lastBuildDate>
+    
+    <atom:link href="/tags/azure/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Attacking Azure Blob Storage Services</title>
+      <link>/posts/attacking-azure-blob-storage-service/</link>
+      <pubDate>Fri, 22 Nov 2024 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/attacking-azure-blob-storage-service/</guid>
+      <description>&lt;h2 id=&#34;what-is-azure-and-blob&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#what-is-azure-and-blob&#34;&gt;
+        #
+    &lt;/a&gt;
+    What is Azure and Blob?
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;Azure, or Microsoft Azure, is a cloud computing platform maintained by Microsoft that offers a bunch of services used by many companies and individuals. Probably, the most famous solutions provided by Microsoft Azure are virtual machines, Azure Kubernetes Services (AKS), solutions for DevOps and DevSecOps, and of course, the giant integration with all other Microsoft services, for example, Active Directory, GitHub, Azure DevOps, Visual Studio, and GitHub Copilot.&lt;/p&gt;
+&lt;p&gt;Now, what is Azure Blob Storage? Azure Blob Storage is a massively scalable and &lt;del&gt;secure&lt;/del&gt; object storage solution for cloud-native workloads, archives, data lakes, HPC, and machine learning (I took this from the Microsoft Azure Blob Storage website). Basically, a lot of companies store their files like videos, documents, executables, logs, backup data, and others in this service and share these resources through their services like web apps, systems, etc.&lt;/p&gt;
+&lt;p&gt;A Blob Storage is constructed of three types of resources, which are:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Storage Account&lt;/strong&gt;: A Storage Account is the unique namespace for your Azure data. So, if you store your data on Azure Storage, your data will be available at an address that uses this namespace as the reference for access. Example: &lt;code&gt;https://oppsec.blob.core.windows.net&lt;/code&gt;.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Container&lt;/strong&gt;: A container is where all the blobs get stored; they work similarly to a directory in a file system. A good thing is there is no limit to how many blobs can be stored in a container, of course, because the purpose is to provide large storage access. A container name can be between 3 and 63 characters long and doesn&amp;rsquo;t support special characters besides the dash character (-).&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Blob&lt;/strong&gt;: A blob is a binary large object and a storage option for any type of data that you want to store in a binary format. (I took this from Microsoft again)&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div align=&#34;center&#34;&gt;
+&lt;p&gt;&lt;img src=&#34;https://learn.microsoft.com/en-us/azure/storage/blobs/media/storage-blobs-introduction/blob1.png&#34; alt=&#34;image&#34;&gt;
+Azure Blob Storage diagram that I stole from Microsoft documentation&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;Azure Blob Storage is basically Microsoft&amp;rsquo;s version of Amazon S3 Bucket or Google Cloud Drive. The main purpose is to serve access to a large scale of files and provide more flexibility in the storing process.&lt;/p&gt;
+&lt;h2 id=&#34;why-should-i-know-about-this&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#why-should-i-know-about-this&#34;&gt;
+        #
+    &lt;/a&gt;
+    Why should I know about this?
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;Well, we&amp;rsquo;re hackers, or pentesters&amp;hellip; so we should know about a bunch of things. Today, it is extremely easy to find websites that use Microsoft services/technologies like IIS, ASP.NET, and now, Azure services, like Azure Blob Storage. If we understand the environment that we are fighting in, we know how to find vulnerabilities and create a good report for the client. I have already done a lot of pentests on clients that use Azure Blob Storage and discovered interesting info and sensitive data about the web app, infrastructure, or environment I was attacking with this knowledge.&lt;/p&gt;
+&lt;p&gt;Now that you understand the importance of knowing what Azure Blob Storage is, we can start talking about the good part: the vulnerabilities that we can find while dealing with this service.&lt;/p&gt;
+&lt;h2 id=&#34;anonymous-access&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#anonymous-access&#34;&gt;
+        #
+    &lt;/a&gt;
+    Anonymous Access
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;The main advantage of Azure Blobs compared to other Azure artifacts like Azure Files (SMB and REST), Azure Queues, and Azure Tables is that Azure Blobs allow anonymous public read access, as we can see in the image below:
+&lt;img src=&#34;https://i.imgur.com/ElQDvps.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;With anonymous access and the right request, we can enumerate all the blobs (files) inside the target Azure Blob Storage and find really good information. As we said before, the base URL for an Azure Blob Storage is &lt;code&gt;STORAGE_ACCOUNT_NAME.blob.core.windows.net&lt;/code&gt;, so you need to first discover the Storage Account name. It can be easily discovered if the web app makes a direct request for the file it needs. For example:
+&lt;img src=&#34;https://i.imgur.com/UrbtCoD.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;In the image above, before the first dot is the storage account name. If you can&amp;rsquo;t find the storage account this way, I recommend trying three things:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Google Dorking
+&lt;img src=&#34;https://i.imgur.com/L0qLKUk.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Use the company&amp;rsquo;s name
+&lt;img src=&#34;https://i.imgur.com/T8rna5v.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Bruteforce with a custom wordlist
+Try using FFUF with a custom wordlist that combines the company name and a generic storage name, like &lt;code&gt;amazoncontent&lt;/code&gt;, &lt;code&gt;amazonstorage&lt;/code&gt;, &lt;code&gt;amazonfiles&lt;/code&gt;.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;If you can find a valid Azure Blob Storage domain, you&amp;rsquo;re probably going to find a page similar to this:
+&lt;img src=&#34;https://i.imgur.com/Xt89ltu.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;As we can see in the image above, the service is asking for the parameter &amp;ldquo;comp&amp;rdquo;. If we look at Microsoft&amp;rsquo;s documentation, it says we can enumerate container names using &lt;code&gt;?comp=list&lt;/code&gt;, but this never worked for me. In an ideal world, like the first image I showed you, the container name will be in the URL. Example: &lt;code&gt;https://oppsec.blob.core.windows.net/static/js/jquery.js&lt;/code&gt; — &lt;strong&gt;static&lt;/strong&gt; is the container name. Again, you can use FFUF to enumerate container names. As you can see, the container name is &lt;strong&gt;static&lt;/strong&gt;, a common word.&lt;/p&gt;
+&lt;p&gt;The main problem here is Azure Blob Storage does not indicate if the container name is valid or not, i.e. &lt;strong&gt;static&lt;/strong&gt; can be a valid container name and &lt;strong&gt;notnotnotvalid&lt;/strong&gt; invalid but we will get the same response for both:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&amp;lt;Error&amp;gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&amp;lt;Code&amp;gt;ResourceNotFound&amp;lt;/Code&amp;gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&amp;lt;Message&amp;gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;The specified resource does not exist. RequestId:4f8c64bf-701e-0024-4099-3cb3d7000000 Time:2024-11-22T04:47:01.2790826Z
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&amp;lt;/Message&amp;gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&amp;lt;/Error&amp;gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;accessing-blobs-from-a-container&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#accessing-blobs-from-a-container&#34;&gt;
+        #
+    &lt;/a&gt;
+    Accessing blobs from a container
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;But Microsoft is not an evil company, and there is a way to identify if the container name is valid or not. We need to append &lt;code&gt;?restype=container&amp;amp;comp=list&lt;/code&gt; or just &lt;code&gt;?comp=list&lt;/code&gt; to the end of the URL, and blobs will be listed.
+&lt;img src=&#34;https://i.imgur.com/A0mA4oq.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;With this in mind, we can go back to FFUF and enumerate valid container names through this command:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;ffuf -c -w /opt/SecLists/Discovery/Web-Content/common.txt --fc 404 --mc all -u https://oppsec.blob.core.windows.net/FUZZ?comp=list
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;ffuf -c -w /opt/SecLists/Discovery/Web-Content/common.txt --fc 404 --mc all -u https://oppsec.blob.core.windows.net/FUZZ?restype=container&amp;amp;comp=list
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Of course, you can use the tool of your choice, but I really like FFUF and have been using it for the last few years.&lt;/p&gt;
+&lt;p&gt;Now you can list the blobs. You just need to access the URL indicated by the Name or Url values. For example, if I want to access the .less file from the image I used above, the URL would be something like this: &lt;code&gt;https://oppsec.blob.core.windows.net/static/backend/REDACTED/css/REDACTED.less&lt;/code&gt;
+&lt;img src=&#34;https://i.imgur.com/tRBTfx0.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;I used this file as an example, but you can find internal documents by searching for files that end with &lt;code&gt;pdf&lt;/code&gt;, &lt;code&gt;csv&lt;/code&gt;, &lt;code&gt;xlsx&lt;/code&gt;, &lt;code&gt;xls&lt;/code&gt;, &lt;code&gt;docx&lt;/code&gt;, or low-hanging fruits with &lt;code&gt;js&lt;/code&gt;, &lt;code&gt;zip&lt;/code&gt;, &lt;code&gt;sql&lt;/code&gt; files. Or just adapt the search based on the environment you&amp;rsquo;re exploring. If the web app is developed with PHP, you can search for &lt;code&gt;php&lt;/code&gt;, &lt;code&gt;inc&lt;/code&gt;, &lt;code&gt;bkp&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;Another problem is Azure Blob Storage is used to store a large scale of files. If you want to find files that end with pdf, you will need to use CTRL+F on your browser and filter one by one. If that wasn&amp;rsquo;t enough, you may come across errors like &lt;code&gt;FeatureVersionMismatch&lt;/code&gt; and will need to specify the &lt;code&gt;x-ms-version&lt;/code&gt; header with the vlaue &lt;code&gt;2020-04-08&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;I&amp;rsquo;m a person that likes to develop tools/scripts and bring more convenience to my life. So, I developed a tool to help with Azure Blob Storage. I called it Blobber, and it is developed with Python &lt;del&gt;and ChatGPT&amp;rsquo;s help&lt;/del&gt;.&lt;/p&gt;
+&lt;h2 id=&#34;blobber&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#blobber&#34;&gt;
+        #
+    &lt;/a&gt;
+    Blobber
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;Blobber automates the process of adding &lt;code&gt;?restype=container&amp;amp;comp=list&lt;/code&gt; to the URL, checks for errors, tries to bypass them, and lets you view only the really important data and filter by extensions with more convenience. You can skip the filter by extensions flag too, but be careful because a lot of content will be printed (probably).&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://i.imgur.com/7ttyKVW.png&#34; alt=&#34;image&#34;&gt;
+&lt;img src=&#34;https://i.imgur.com/ARLdwmx.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;I will not release Blobber for now because I want to do more tests and not release a tool that does not work as expected. However, it will eventually be available on my GitHub. The repo will be accessible through this URL &lt;a href=&#34;https://github.com/oppsec/blobber&#34;&gt;https://github.com/oppsec/blobber&lt;/a&gt;.&lt;/p&gt;
+&lt;h2 id=&#34;conclusion&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#conclusion&#34;&gt;
+        #
+    &lt;/a&gt;
+    Conclusion
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;Today we learned a bit more about the Azure Blob Storage service and how valuable it is to find one with anonymous access enabled. I really enjoyed reading about this through Microsoft&amp;rsquo;s documentation and developing this script (Blobber). In my opinion, this is the best way to learn something new and improve your skills. I hope all you guys liked this post and learned something new. I hope to see you again soon.&lt;/p&gt;
+&lt;h2 id=&#34;references&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#references&#34;&gt;
+        #
+    &lt;/a&gt;
+    References
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/azure/storage/blobs/&#34;&gt;https://learn.microsoft.com/en-us/azure/storage/blobs/&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview&#34;&gt;https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api&#34;&gt;https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-concepts&#34;&gt;https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-concepts&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/rest/api/storageservices/enumerating-blob-resources&#34;&gt;https://learn.microsoft.com/en-us/rest/api/storageservices/enumerating-blob-resources&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/rest/api/storageservices/operations-on-containers&#34;&gt;https://learn.microsoft.com/en-us/rest/api/storageservices/operations-on-containers&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

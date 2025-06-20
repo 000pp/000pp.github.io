@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<meta name="theme-name" content="Anubis2">
+
+<title>Attacking Azure Blob Storage Services - PWN 2 FUN</title>
+
+<meta name="description" content="Who knows what is Azure Blob Storage? And... what I can do with that as a pentester?">
+
+
+
+
+
+<link rel="icon" type="image/x-icon" href="//localhost:1313/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="//localhost:1313/favicon.png">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+  body {
+    visibility: hidden;
+    opacity: 0;
+  }
+</style>
+
+<noscript>
+  <style>
+    body {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</noscript>
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="/css/style.a141c23ada4b1ca2bc1226d02e28f8f4555d9bb68fd03ce2f049a04ae8f478a3.css" integrity="sha256-oUHCOtpLHKK8EibQLij49FVdm7aP0Dzi8EmgSuj0eKM=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="/css/style.9c1888ebff42c0224ce04dac10cb2c401f1b77f54f78e8d87d73c3bed781c263.css" integrity="sha256-nBiI6/9CwCJM4E2sEMssQB8bd/VPeOjYfXPDvteBwmM=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="/css/style.acd606c0fce58853afe0248d37bb41acbbcdd8b1aca2412b6c0fa760da0137f3.css" integrity="sha256-rNYGwPzliFOv4CSNN7tBrLvN2LGsokErbA&#43;nYNoBN/M=">
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <script src="/js/script.672e2309c296e07c18bcd08b28d797a56222ff941d65f308fba3158c44885b14.js" type="text/javascript" charset="utf-8" integrity="sha256-Zy4jCcKW4HwYvNCLKNeXpWIi/5QdZfMI&#43;6MVjESIWxQ="></script>
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header class="common-header">
+            
+                <div class="header-top">
+    <div class="header-top-left">
+        <h1 class="site-title noselect">
+    <a href="//localhost:1313/">PWN 2 FUN</a>
+</h1>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+    
+        <div class="theme-switcher">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-sun-high"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z" /><path d="M6.343 17.657l-1.414 1.414" /><path d="M6.343 6.343l-1.414 -1.414" /><path d="M17.657 6.343l1.414 -1.414" /><path d="M17.657 17.657l1.414 1.414" /><path d="M4 12h-2" /><path d="M12 4v-2" /><path d="M20 12h2" /><path d="M12 20v2" /></svg>
+
+
+</span>
+
+        </div>
+    
+
+    <script>
+        const STORAGE_KEY = 'user-color-scheme'
+        const defaultTheme = "light"
+
+        let currentTheme
+        let switchButton
+        let autoDefinedScheme = window.matchMedia('(prefers-color-scheme: dark)')
+
+        function switchTheme(e) {
+            currentTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+            if (localStorage) localStorage.setItem(STORAGE_KEY, currentTheme);
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        const autoChangeScheme = e => {
+            currentTheme = e.matches ? 'dark' : 'light'
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            switchButton = document.querySelector('.theme-switcher')
+            currentTheme = detectCurrentScheme()
+
+            if (currentTheme === 'auto') {
+                autoChangeScheme(autoDefinedScheme);
+                autoDefinedScheme.addListener(autoChangeScheme);
+            } else {
+                document.documentElement.setAttribute('data-theme', currentTheme)
+            }
+
+            if (switchButton) {
+                switchButton.addEventListener('click', switchTheme, false)
+            }
+
+            showContent();
+        })
+
+        function detectCurrentScheme() {
+            if (localStorage !== null && localStorage.getItem(STORAGE_KEY)) {
+                return localStorage.getItem(STORAGE_KEY)
+            }
+            if (defaultTheme) {
+                return defaultTheme
+            }
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function showContent() {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = 1;
+        }
+
+        function changeGiscusTheme (theme) {
+            function sendMessage(message) {
+              const iframe = document.querySelector('iframe.giscus-frame');
+              if (!iframe) return;
+              iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+            }
+
+            sendMessage({
+              setConfig: {
+                theme: theme
+              }
+            });
+        }
+    </script>
+
+
+        <ul class="social-icons noselect">
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+    <li>
+            <a href="/index.xml" title="RSS" rel="me">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-rss"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M4 4a16 16 0 0 1 16 16" /><path d="M4 11a9 9 0 0 1 9 9" /></svg>
+
+
+</span>
+
+            </a>
+        </li>
+    
+
+</ul>
+
+    </div>
+    <div class="header-top-right">
+
+    </div>
+</div>
+
+
+    <nav class="noselect">
+        
+        
+        <a class="" href="//localhost:1313/" title="">Home</a>
+        
+        <a class="" href="//localhost:1313/about/" title="">About</a>
+        
+        <a class="" href="//localhost:1313/tags/" title="">Tags</a>
+        
+        <a class="" href="//localhost:1313/posts/" title="">Archive</a>
+        
+    </nav>
+
+
+
+
+
+
+
+
+
+
+
+
+            
+        </header>
+        <main id="main" tabindex="-1">
+            
+    
+
+    <article class="post h-entry">
+        <div class="post-header">
+            <header>
+                
+                
+                
+                <h1 class="p-name post-title ">Attacking Azure Blob Storage Services</h1>
+                
+
+            </header>
+            
+
+
+
+<div class="post-info noselect">
+    
+        <div class="post-date dt-published">
+            <time datetime="2024-11-22">2024-11-22</time>
+            
+        </div>
+    
+
+    <a class="post-hidden-url u-url" href="/posts/attacking-azure-blob-storage-service/">/posts/attacking-azure-blob-storage-service/</a>
+    <a href="//localhost:1313/" class="p-name p-author post-hidden-author h-card" rel="me">map[name:000pp]</a>
+
+
+    <div class="post-taxonomies">
+        
+        
+            <ul class="post-tags">
+                
+                    
+                    <li><a href="/tags/azure">#azure</a></li>
+                
+                    
+                    <li><a href="/tags/pentest">#pentest</a></li>
+                
+                    
+                    <li><a href="/tags/microsoft">#microsoft</a></li>
+                
+                    
+                    <li><a href="/tags/windows">#windows</a></li>
+                
+            </ul>
+        
+        
+    </div>
+</div>
+
+        </div>
+        
+
+  
+  
+
+
+
+
+  
+  
+  
+  <details class="toc noselect">
+    <summary>Table of Contents</summary>
+    <div class="inner"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#what-is-azure-and-blob">What is Azure and Blob?</a></li>
+    <li><a href="#why-should-i-know-about-this">Why should I know about this?</a></li>
+    <li><a href="#anonymous-access">Anonymous Access</a></li>
+    <li><a href="#accessing-blobs-from-a-container">Accessing blobs from a container</a></li>
+    <li><a href="#blobber">Blobber</a></li>
+    <li><a href="#conclusion">Conclusion</a></li>
+    <li><a href="#references">References</a></li>
+  </ul>
+</nav></div>
+  </details>
+  
+
+
+
+<script>
+  var toc = document.querySelector(".toc");
+  if (toc) {
+    toc.addEventListener("click", function () {
+      if (event.target.tagName !== "A") {
+        event.preventDefault();
+        if (this.open) {
+          this.open = false;
+          this.classList.remove("expanded");
+        } else {
+          this.open = true;
+          this.classList.add("expanded");
+        }
+      }
+    });
+  }
+</script>
+
+        <div class="content e-content">
+            <h2 id="what-is-azure-and-blob" >
+<div>
+    <a href="#what-is-azure-and-blob">
+        #
+    </a>
+    What is Azure and Blob?
+</div>
+</h2>
+<p>Azure, or Microsoft Azure, is a cloud computing platform maintained by Microsoft that offers a bunch of services used by many companies and individuals. Probably, the most famous solutions provided by Microsoft Azure are virtual machines, Azure Kubernetes Services (AKS), solutions for DevOps and DevSecOps, and of course, the giant integration with all other Microsoft services, for example, Active Directory, GitHub, Azure DevOps, Visual Studio, and GitHub Copilot.</p>
+<p>Now, what is Azure Blob Storage? Azure Blob Storage is a massively scalable and <del>secure</del> object storage solution for cloud-native workloads, archives, data lakes, HPC, and machine learning (I took this from the Microsoft Azure Blob Storage website). Basically, a lot of companies store their files like videos, documents, executables, logs, backup data, and others in this service and share these resources through their services like web apps, systems, etc.</p>
+<p>A Blob Storage is constructed of three types of resources, which are:</p>
+<ul>
+<li>
+<p><strong>Storage Account</strong>: A Storage Account is the unique namespace for your Azure data. So, if you store your data on Azure Storage, your data will be available at an address that uses this namespace as the reference for access. Example: <code>https://oppsec.blob.core.windows.net</code>.</p>
+</li>
+<li>
+<p><strong>Container</strong>: A container is where all the blobs get stored; they work similarly to a directory in a file system. A good thing is there is no limit to how many blobs can be stored in a container, of course, because the purpose is to provide large storage access. A container name can be between 3 and 63 characters long and doesn&rsquo;t support special characters besides the dash character (-).</p>
+</li>
+<li>
+<p><strong>Blob</strong>: A blob is a binary large object and a storage option for any type of data that you want to store in a binary format. (I took this from Microsoft again)</p>
+</li>
+</ul>
+<div align="center">
+<p><img src="https://learn.microsoft.com/en-us/azure/storage/blobs/media/storage-blobs-introduction/blob1.png" alt="image">
+Azure Blob Storage diagram that I stole from Microsoft documentation</p>
+</div>
+<p>Azure Blob Storage is basically Microsoft&rsquo;s version of Amazon S3 Bucket or Google Cloud Drive. The main purpose is to serve access to a large scale of files and provide more flexibility in the storing process.</p>
+<h2 id="why-should-i-know-about-this" >
+<div>
+    <a href="#why-should-i-know-about-this">
+        #
+    </a>
+    Why should I know about this?
+</div>
+</h2>
+<p>Well, we&rsquo;re hackers, or pentesters&hellip; so we should know about a bunch of things. Today, it is extremely easy to find websites that use Microsoft services/technologies like IIS, ASP.NET, and now, Azure services, like Azure Blob Storage. If we understand the environment that we are fighting in, we know how to find vulnerabilities and create a good report for the client. I have already done a lot of pentests on clients that use Azure Blob Storage and discovered interesting info and sensitive data about the web app, infrastructure, or environment I was attacking with this knowledge.</p>
+<p>Now that you understand the importance of knowing what Azure Blob Storage is, we can start talking about the good part: the vulnerabilities that we can find while dealing with this service.</p>
+<h2 id="anonymous-access" >
+<div>
+    <a href="#anonymous-access">
+        #
+    </a>
+    Anonymous Access
+</div>
+</h2>
+<p>The main advantage of Azure Blobs compared to other Azure artifacts like Azure Files (SMB and REST), Azure Queues, and Azure Tables is that Azure Blobs allow anonymous public read access, as we can see in the image below:
+<img src="https://i.imgur.com/ElQDvps.png" alt="image"></p>
+<p>With anonymous access and the right request, we can enumerate all the blobs (files) inside the target Azure Blob Storage and find really good information. As we said before, the base URL for an Azure Blob Storage is <code>STORAGE_ACCOUNT_NAME.blob.core.windows.net</code>, so you need to first discover the Storage Account name. It can be easily discovered if the web app makes a direct request for the file it needs. For example:
+<img src="https://i.imgur.com/UrbtCoD.png" alt="image"></p>
+<p>In the image above, before the first dot is the storage account name. If you can&rsquo;t find the storage account this way, I recommend trying three things:</p>
+<ol>
+<li>
+<p>Google Dorking
+<img src="https://i.imgur.com/L0qLKUk.png" alt="image"></p>
+</li>
+<li>
+<p>Use the company&rsquo;s name
+<img src="https://i.imgur.com/T8rna5v.png" alt="image"></p>
+</li>
+<li>
+<p>Bruteforce with a custom wordlist
+Try using FFUF with a custom wordlist that combines the company name and a generic storage name, like <code>amazoncontent</code>, <code>amazonstorage</code>, <code>amazonfiles</code>.</p>
+</li>
+</ol>
+<p>If you can find a valid Azure Blob Storage domain, you&rsquo;re probably going to find a page similar to this:
+<img src="https://i.imgur.com/Xt89ltu.png" alt="image"></p>
+<p>As we can see in the image above, the service is asking for the parameter &ldquo;comp&rdquo;. If we look at Microsoft&rsquo;s documentation, it says we can enumerate container names using <code>?comp=list</code>, but this never worked for me. In an ideal world, like the first image I showed you, the container name will be in the URL. Example: <code>https://oppsec.blob.core.windows.net/static/js/jquery.js</code> — <strong>static</strong> is the container name. Again, you can use FFUF to enumerate container names. As you can see, the container name is <strong>static</strong>, a common word.</p>
+<p>The main problem here is Azure Blob Storage does not indicate if the container name is valid or not, i.e. <strong>static</strong> can be a valid container name and <strong>notnotnotvalid</strong> invalid but we will get the same response for both:</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>&lt;Error&gt;
+</span></span><span style="display:flex;"><span>&lt;Code&gt;ResourceNotFound&lt;/Code&gt;
+</span></span><span style="display:flex;"><span>&lt;Message&gt;
+</span></span><span style="display:flex;"><span>The specified resource does not exist. RequestId:4f8c64bf-701e-0024-4099-3cb3d7000000 Time:2024-11-22T04:47:01.2790826Z
+</span></span><span style="display:flex;"><span>&lt;/Message&gt;
+</span></span><span style="display:flex;"><span>&lt;/Error&gt;
+</span></span></code></pre></div><h2 id="accessing-blobs-from-a-container" >
+<div>
+    <a href="#accessing-blobs-from-a-container">
+        #
+    </a>
+    Accessing blobs from a container
+</div>
+</h2>
+<p>But Microsoft is not an evil company, and there is a way to identify if the container name is valid or not. We need to append <code>?restype=container&amp;comp=list</code> or just <code>?comp=list</code> to the end of the URL, and blobs will be listed.
+<img src="https://i.imgur.com/A0mA4oq.png" alt="image"></p>
+<p>With this in mind, we can go back to FFUF and enumerate valid container names through this command:</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>ffuf -c -w /opt/SecLists/Discovery/Web-Content/common.txt --fc 404 --mc all -u https://oppsec.blob.core.windows.net/FUZZ?comp=list
+</span></span><span style="display:flex;"><span>ffuf -c -w /opt/SecLists/Discovery/Web-Content/common.txt --fc 404 --mc all -u https://oppsec.blob.core.windows.net/FUZZ?restype=container&amp;comp=list
+</span></span></code></pre></div><p>Of course, you can use the tool of your choice, but I really like FFUF and have been using it for the last few years.</p>
+<p>Now you can list the blobs. You just need to access the URL indicated by the Name or Url values. For example, if I want to access the .less file from the image I used above, the URL would be something like this: <code>https://oppsec.blob.core.windows.net/static/backend/REDACTED/css/REDACTED.less</code>
+<img src="https://i.imgur.com/tRBTfx0.png" alt="image"></p>
+<p>I used this file as an example, but you can find internal documents by searching for files that end with <code>pdf</code>, <code>csv</code>, <code>xlsx</code>, <code>xls</code>, <code>docx</code>, or low-hanging fruits with <code>js</code>, <code>zip</code>, <code>sql</code> files. Or just adapt the search based on the environment you&rsquo;re exploring. If the web app is developed with PHP, you can search for <code>php</code>, <code>inc</code>, <code>bkp</code>.</p>
+<p>Another problem is Azure Blob Storage is used to store a large scale of files. If you want to find files that end with pdf, you will need to use CTRL+F on your browser and filter one by one. If that wasn&rsquo;t enough, you may come across errors like <code>FeatureVersionMismatch</code> and will need to specify the <code>x-ms-version</code> header with the vlaue <code>2020-04-08</code>.</p>
+<p>I&rsquo;m a person that likes to develop tools/scripts and bring more convenience to my life. So, I developed a tool to help with Azure Blob Storage. I called it Blobber, and it is developed with Python <del>and ChatGPT&rsquo;s help</del>.</p>
+<h2 id="blobber" >
+<div>
+    <a href="#blobber">
+        #
+    </a>
+    Blobber
+</div>
+</h2>
+<p>Blobber automates the process of adding <code>?restype=container&amp;comp=list</code> to the URL, checks for errors, tries to bypass them, and lets you view only the really important data and filter by extensions with more convenience. You can skip the filter by extensions flag too, but be careful because a lot of content will be printed (probably).</p>
+<p><img src="https://i.imgur.com/7ttyKVW.png" alt="image">
+<img src="https://i.imgur.com/ARLdwmx.png" alt="image"></p>
+<p>I will not release Blobber for now because I want to do more tests and not release a tool that does not work as expected. However, it will eventually be available on my GitHub. The repo will be accessible through this URL <a href="https://github.com/oppsec/blobber">https://github.com/oppsec/blobber</a>.</p>
+<h2 id="conclusion" >
+<div>
+    <a href="#conclusion">
+        #
+    </a>
+    Conclusion
+</div>
+</h2>
+<p>Today we learned a bit more about the Azure Blob Storage service and how valuable it is to find one with anonymous access enabled. I really enjoyed reading about this through Microsoft&rsquo;s documentation and developing this script (Blobber). In my opinion, this is the best way to learn something new and improve your skills. I hope all you guys liked this post and learned something new. I hope to see you again soon.</p>
+<h2 id="references" >
+<div>
+    <a href="#references">
+        #
+    </a>
+    References
+</div>
+</h2>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/azure/storage/blobs/">https://learn.microsoft.com/en-us/azure/storage/blobs/</a></li>
+<li><a href="https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview">https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview</a></li>
+<li><a href="https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api">https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api</a></li>
+<li><a href="https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-concepts">https://learn.microsoft.com/en-us/rest/api/storageservices/blob-service-concepts</a></li>
+<li><a href="https://learn.microsoft.com/en-us/rest/api/storageservices/enumerating-blob-resources">https://learn.microsoft.com/en-us/rest/api/storageservices/enumerating-blob-resources</a></li>
+<li><a href="https://learn.microsoft.com/en-us/rest/api/storageservices/operations-on-containers">https://learn.microsoft.com/en-us/rest/api/storageservices/operations-on-containers</a></li>
+</ul>
+
+        </div>
+
+    </article>
+
+    
+    
+
+    
+        
+        
+    
+
+    
+
+    
+        
+
+
+    
+
+    
+
+    
+    
+    
+
+        </main>
+        
+            <footer class="common-footer noselect">
+    
+    
+
+    <div class="common-footer-bottom">
+        
+
+        <div style="display: flex; align-items: center; gap:8px">
+            ©  000pp,  2025
+            
+        </div>
+        <div style="display:flex; align-items: center; gap:4px">
+
+            
+            
+
+            
+            
+            
+            
+
+            
+            
+
+            
+        </div>
+        
+            <div>
+                Powered by <a target="_blank" rel="noopener noreferrer" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" rel="noopener noreferrer" href="https://github.com/hugo-theme-anubis2/hugo-theme-anubis2">Anubis2</a>.<br>
+            </div>
+        
+    </div>
+
+    <p class="h-card vcard">
+
+    <a href=//localhost:1313/ class="p-name u-url url fn" rel="me">map[name:000pp]</a>
+
+    
+
+    
+</p>
+
+</footer>
+
+        
+    </div>
+</body>
+</html>
