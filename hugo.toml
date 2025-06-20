@@ -3,14 +3,28 @@ languageCode = "en-us"
 title = "PWN 2 FUN"
 theme = "anubis2"
 
+publishDir = "public"
+canonifyURLs = true
+
 copyright = "© 000pp"
 
 pygmentsstyle = "monokai"
 pygmentscodefences = true
 pygmentscodefencesguesssyntax = true
 
+toc = true
+locale = "pt-br"
+
+readNextPosts = 2
+
+paginationSinglePost = true
+
 enableEmoji = true
 enableRobotsTXT = true
+
+[caches]
+  [caches.images]
+    dir = ':cacheDir/images'
 
 [pagination]
 pagerSize = 5
@@ -47,3 +61,11 @@ unsafe = true # Enable unsafe mode to have a better experience
 
 [markup.highlight]
 style = 'catppuccin-frappe' # Find more style at here: https://swapoff.org/chroma/playground/
+tabWidth = 4
+
+[params.anubis2]
+enableCopyCodeButton = true
+colorTheme = "auto"
+enableColorThemeSwitcher = true
+hideFooterAttribution = true
+enableReadMoreButton = true

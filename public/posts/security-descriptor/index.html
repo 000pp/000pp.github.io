@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+
+
+
+
+    
+
+
+
+
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<meta name="theme-name" content="Anubis2">
+
+<title>Security Descriptor, o que é e onde vive. - PWN 2 FUN</title>
+
+<meta name="description" content="A blog post to understand a bit more of the Security Descriptor feature">
+
+
+
+
+
+<link rel="icon" type="image/x-icon" href="//localhost:1313/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="//localhost:1313/favicon.png">
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+
+
+<style>
+  body {
+    visibility: hidden;
+    opacity: 0;
+  }
+</style>
+
+<noscript>
+  <style>
+    body {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</noscript>
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.bc0d4b6e7a72f0edf4f6e696fe84bff6c99cf7557b4513a527c1b3a6fae34f6f.css" integrity="sha256-vA1Lbnpy8O309uaW/oS/9smc91V7RROlJ8GzpvrjT28=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.9c1888ebff42c0224ce04dac10cb2c401f1b77f54f78e8d87d73c3bed781c263.css" integrity="sha256-nBiI6/9CwCJM4E2sEMssQB8bd/VPeOjYfXPDvteBwmM=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.acd606c0fce58853afe0248d37bb41acbbcdd8b1aca2412b6c0fa760da0137f3.css" integrity="sha256-rNYGwPzliFOv4CSNN7tBrLvN2LGsokErbA&#43;nYNoBN/M=">
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+    
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <script src="//localhost:1313/js/script.672e2309c296e07c18bcd08b28d797a56222ff941d65f308fba3158c44885b14.js" type="text/javascript" charset="utf-8" integrity="sha256-Zy4jCcKW4HwYvNCLKNeXpWIi/5QdZfMI&#43;6MVjESIWxQ="></script>
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header class="common-header">
+            
+                <div class="header-top">
+    <div class="header-top-left">
+        <h1 class="site-title noselect">
+    <a href="//localhost:1313/">PWN 2 FUN</a>
+</h1>
+
+        
+
+  
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    
+        <div class="theme-switcher">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-sun-high"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z" /><path d="M6.343 17.657l-1.414 1.414" /><path d="M6.343 6.343l-1.414 -1.414" /><path d="M17.657 6.343l1.414 -1.414" /><path d="M17.657 17.657l1.414 1.414" /><path d="M4 12h-2" /><path d="M12 4v-2" /><path d="M20 12h2" /><path d="M12 20v2" /></svg>
+
+
+</span>
+
+        </div>
+    
+
+    <script>
+        const STORAGE_KEY = 'user-color-scheme'
+        const defaultTheme = "auto"
+
+        let currentTheme
+        let switchButton
+        let autoDefinedScheme = window.matchMedia('(prefers-color-scheme: dark)')
+
+        function switchTheme(e) {
+            currentTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+            if (localStorage) localStorage.setItem(STORAGE_KEY, currentTheme);
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        const autoChangeScheme = e => {
+            currentTheme = e.matches ? 'dark' : 'light'
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            switchButton = document.querySelector('.theme-switcher')
+            currentTheme = detectCurrentScheme()
+
+            if (currentTheme === 'auto') {
+                autoChangeScheme(autoDefinedScheme);
+                autoDefinedScheme.addListener(autoChangeScheme);
+            } else {
+                document.documentElement.setAttribute('data-theme', currentTheme)
+            }
+
+            if (switchButton) {
+                switchButton.addEventListener('click', switchTheme, false)
+            }
+
+            showContent();
+        })
+
+        function detectCurrentScheme() {
+            if (localStorage !== null && localStorage.getItem(STORAGE_KEY)) {
+                return localStorage.getItem(STORAGE_KEY)
+            }
+            if (defaultTheme) {
+                return defaultTheme
+            }
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function showContent() {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = 1;
+        }
+
+        function changeGiscusTheme (theme) {
+            function sendMessage(message) {
+              const iframe = document.querySelector('iframe.giscus-frame');
+              if (!iframe) return;
+              iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+            }
+
+            sendMessage({
+              setConfig: {
+                theme: theme
+              }
+            });
+        }
+    </script>
+
+
+        <ul class="social-icons noselect">
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+    <li>
+            <a href="//localhost:1313/index.xml" title="RSS" rel="me">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-rss"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M4 4a16 16 0 0 1 16 16" /><path d="M4 11a9 9 0 0 1 9 9" /></svg>
+
+
+</span>
+
+            </a>
+        </li>
+    
+
+</ul>
+
+    </div>
+    <div class="header-top-right">
+
+    </div>
+</div>
+
+
+    <nav class="noselect">
+        
+        
+        <a class="" href="//localhost:1313/" title="">Home</a>
+        
+        <a class="" href="//localhost:1313/about/" title="">About</a>
+        
+        <a class="" href="//localhost:1313/tags/" title="">Tags</a>
+        
+        <a class="" href="//localhost:1313/posts/" title="">Archive</a>
+        
+    </nav>
+
+
+
+
+
+
+
+
+
+
+
+
+            
+        </header>
+        <main id="main" tabindex="-1">
+            
+    
+
+    <article class="post h-entry">
+        <div class="post-header">
+            <header>
+                
+                
+                
+                <h1 class="p-name post-title ">Security Descriptor, o que é e onde vive.</h1>
+                
+
+            </header>
+            
+
+
+
+<div class="post-info noselect">
+    
+        <div class="post-date dt-published">
+            <time datetime="2024-10-24">2024-10-24</time>
+            
+        </div>
+    
+
+    <a class="post-hidden-url u-url" href="//localhost:1313/posts/security-descriptor/">/posts/security-descriptor/</a>
+    <a href="//localhost:1313/" class="p-name p-author post-hidden-author h-card" rel="me">map[name:000pp]</a>
+
+
+    <div class="post-taxonomies">
+        
+        
+            <ul class="post-tags">
+                
+                    
+                    <li><a href="//localhost:1313/tags/windows">#windows</a></li>
+                
+                    
+                    <li><a href="//localhost:1313/tags/ldap">#ldap</a></li>
+                
+                    
+                    <li><a href="//localhost:1313/tags/active-directory">#active directory</a></li>
+                
+            </ul>
+        
+        
+    </div>
+</div>
+
+        </div>
+        
+
+  
+  
+
+
+
+
+  
+  
+  
+  <details class="toc noselect">
+    <summary>Table of Contents</summary>
+    <div class="inner"><nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#exemplos">Exemplos</a></li>
+      </ul>
+    </li>
+    <li><a href="#qual-a-sua-importância">Qual a sua importância?</a></li>
+    <li><a href="#trabalhando-com-o-ntsecuritydescriptor">Trabalhando com o ntSecurityDescriptor</a></li>
+    <li><a href="#conclusão">Conclusão</a></li>
+    <li><a href="#referências">Referências</a></li>
+  </ul>
+</nav></div>
+  </details>
+  
+
+
+
+<script>
+  var toc = document.querySelector(".toc");
+  if (toc) {
+    toc.addEventListener("click", function () {
+      if (event.target.tagName !== "A") {
+        event.preventDefault();
+        if (this.open) {
+          this.open = false;
+          this.classList.remove("expanded");
+        } else {
+          this.open = true;
+          this.classList.add("expanded");
+        }
+      }
+    });
+  }
+</script>
+
+        <div class="content e-content">
+            <p>O Security Descriptor ou ntSecurityDescriptor, é um atributo de segurança do Windows que contém uma estrutura de dados representativa das permissões e propriedades daquele objeto em questão. Podemos interpretar o mesmo como uma ideia do escopo de permissões do X sobre Y. O ntSecurityDescriptor está presente desde as versões superiores do Windows Server 2000 e se manteve o mesmo desde então.</p>
+<p>O Security Descriptor é um representação compactada binária da segurança associada a objeto pertecente ao ambiente. Para comprovação disso, podemos tentar extrair o Security Descriptor de um usuário ou grupo por meio de uma query LDAP e vermos seu formato puro.</p>
+<img src="//localhost:1313/images/security-descriptor/image1.jpg">
+<p>É importante salientar que o ntSecurityDescriptor é utilizado por DACLs, SACLs, e ACL. Esses três atributos são responsáveis por representar as permissões desse objeto consumindo os dados do ntSecurityDescriptor. Essas permissões são de quem representa aquele objeto, quem pode acessar esse objeto e o que pode fazer com o mesmo, informações de auditoria do objeto e restrições sobre tal.</p>
+<ul>
+<li><strong>ACL</strong>: <em>Access Control List</em> é uma lista de proteções de seguranças que são aplicadas sobre um objeto. Deve-se entender que objetos podem ser um arquivo, processo, evento, ou tudo aquilo que também tiver um “Security Descriptor”;</li>
+<li><strong>ACE</strong>: <em>Access Control Entries</em> são entrada de dados de ACLs (Access Control List). Uma ACE contém uma lista de permissões sobre um SID que irá identificar se tais permissões participam dos escopos: Allowed, Denied ou Audited;</li>
+<li><strong>DACL</strong>: <em>Discretionary Access Control List</em> é o responsável por identificar os administradores ou objetos que tem permissões ou não sobre objetos protegidos. Caso um processo tente interagir com um objeto protegido, o sistema irá requisitar ao que ACE busque na DACL se aquele autor em questão tem as permissões necessárias;</li>
+<li><strong>SACL</strong>: <em>System Access Control List</em> é uma lista que permite que adminstradores registrem tentativas de interação ou acesso a um objeto protegido. Cada ACE irá especificar as tentativas de acesso sobre aquele item e fará com que o sistema armazene essa tentativa no Security Event Log;</li>
+</ul>
+<img src="//localhost:1313/images/security-descriptor/image2.jpg">
+<p>De acordo com a Microsoft, o ntSecurityDescriptor utiliza de um sistema chamado <em>Security Descriptor String Format</em>. O <em>Security Descriptor String Format</em> é um formato ou sistema de texto responsável por armazenar ou transportar a informação do ntSecurityDescriptor. Isso é feito por duas funções chamadas <strong>ConvertSecurityDescriptorToStringSecurityDescriptorA</strong> e <strong>ConvertStringSecurityDescriptorToSecurityDescriptorA</strong>. Essas duas funções são utilizadas para o trabalho de conversão dos Security Descriptor.</p>
+<p>É possível transformar um <em>“String Security Descriptor</em>“ para um <em>Security Descriptor Absoluto</em> através de outra função que é chamada de <strong>MakeAbsoluteSD</strong>. Essas três funções iram retornar valores não nulos, caso todos os argumentos necessários forem repassados e serem válidos. Com o seu retorno, é possível extrair o formato do Security Descriptor.</p>
+<p>Para que as funções citadas acima possam descrever o formato do Security Descriptor, é utilizado a tecnologia SDDL (Security Descriptor Definition Language) que irá fazer essa tradução e permitir que as funções possam representar elas em texto. Aqui estão alguns exemplos de SDDL retirados do artigo da Microsoft:</p>
+<h3 id="exemplos" >
+<div>
+    <a href="#exemplos">
+        ##
+    </a>
+    Exemplos
+</div>
+</h3>
+<p><strong>Regra</strong>: Qualquer usuário poderá executar esse objeto se ele seguir as seguintes condições:</p>
+<ol>
+<li>O título dele ser PM</li>
+<li>A divisão ou setor dele for Financeiro ou Vendas</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>d:(XA; ;FX;;;S-1-1-0; (@User.Title==&#34;PM&#34; &amp;&amp; (@User.Division==&#34;Financeiro&#34; || @User.Division ==&#34;Vendas&#34;)))
+</span></span></code></pre></div><p><strong>Regra 2</strong>: Permite leitura do objeto se o usuário seguir as seguintes condições:</p>
+<ol>
+<li>Seu login ter sido feito a partir de um Smart Card</li>
+<li>É pertencente do grupo Backup Operator</li>
+<li>Está conectado em uma máquina com o BitLocker ativo</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>D:(XA; ;FR;;;S-1-1-0; (Member_of {SID(Smartcard_SID), SID(BO)} &amp;&amp;@Device.Bitlocker))
+</span></span></code></pre></div><h2 id="qual-a-sua-importância" >
+<div>
+    <a href="#qual-a-sua-import%c3%a2ncia">
+        #
+    </a>
+    Qual a sua importância?
+</div>
+</h2>
+<p>Através do Security Descriptor, pode-se compreender qual o escopo de privilégios que aquele ativo terá sobre um item de seu interesse ou que haverá uma possível interação. Com isso em mente, a Microsoft desenvolveu esse atributo expressivo para que fosse alocado sobre os objetos do ambiente Active Directory e pudesse trabalhar as questões de controle de acesso. Atualmente, ele é utilizado por outras classes do ambiente Active Directory como:</p>
+<ul>
+<li>samDomainBase: A classe base para a definição de domínios;</li>
+<li>securityPrincipal: Armazena informações de segura sobre um objeto;</li>
+<li>top: A classe de mais alto nível que é de onde todas as classes derivam;</li>
+</ul>
+<p>Hoje em dia, ferramentas como o <strong>BloodHound</strong> usufruem de ACEs e DACLs para identificar as permissões que um objeto tem sobre o outro, e assim, poder construir caminhos de exploração por meio de fragilidades do objeto X sobre o objeto Y.</p>
+<h2 id="trabalhando-com-o-ntsecuritydescriptor" >
+<div>
+    <a href="#trabalhando-com-o-ntsecuritydescriptor">
+        #
+    </a>
+    Trabalhando com o ntSecurityDescriptor
+</div>
+</h2>
+<p>O ntSecurityDescriptor segue o seguinte formato <code>O:BAG:BAD:S:</code>, onde:</p>
+<ul>
+<li>O: Owner</li>
+<li>BAG e BAD serão utilizados para representar quem tem permissão de interação e quem não tem sobre aquele objeto. G é Granted e D é Deny.</li>
+<li>S representará o SACL.</li>
+</ul>
+<p>O atributo Owner irá indicar o proprietário por meio do SID do objeto, o BAG e o BAD são especificadores de controle de acesso e o SACL para poder armazenar as tentativas de interação com o objeto alvo. De uma maneira simples, se expandíssemos um Security Descriptor, esse seria o formato dele:</p>
+<img src="//localhost:1313/images/security-descriptor/image3.jpg">
+<p>Como podemos ver, o Owner e PrimaryGroup são as representações do proprietário daquele Security Descriptor. Com isso, podemos partir para a leitura da DACL que trará informações sobre a ACE do objeto protegido. Em um contexto de segurança ofensiva, o que diretamente nos importa seria o Access Mask dessa ACE.</p>
+<p>Com isso em mente, podemos capturar o Security Descriptor de objetos (usuários, grupos, etc) e lermos suas permissões e identificar possíveis fragilidades que atacantes podem utilizar para escalonar privilégios dentro de um ambiente Active Directory. Para isso, incrementei um módulo na minha ferramenta <a href="https://github.com/oppsec/breads">breads</a> que irá buscar pelo valor do ntSecurityDescriptor de todos os objetos do ambiente através da query <code>objectClass=(*)</code> e checar as permissões se baseando no valor de ACE_MASK. Esses valores são hexadecimais que quando calculados, podem ser lidos como bits representantes de permissão. Essa é a tabela de permissões:</p>
+<img src="//localhost:1313/images/security-descriptor/image4.jpg">
+<p>Esse é o pedaço do código da minha ferramenta que irá realizar essa busca. O <code>object_ntsd</code> representa o acesso ao atributo ntSecurityDescriptor daquele objeto; já a variável <code>sd</code> está utilizando de uma classe do projeto <a href="https://github.com/fortra/impacket">Impacket</a> para realizar a leitura dos bytes do Security Descriptor. Por fim, percorremos pelas chaves retornada da variável <code>sd</code> e acessamos seus valores respectivamente.</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#737994;font-style:italic"># ...</span>
+</span></span><span style="display:flex;"><span>object_ntsd <span style="color:#99d1db;font-weight:bold">=</span> attribute[<span style="color:#a6d189">&#34;attributes&#34;</span>][<span style="color:#a6d189">&#34;nTSecurityDescriptor&#34;</span>]
+</span></span><span style="display:flex;"><span>sd <span style="color:#99d1db;font-weight:bold">=</span> SR_SECURITY_DESCRIPTOR(data<span style="color:#99d1db;font-weight:bold">=</span>object_ntsd)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ca9ee6">if</span> sd[<span style="color:#a6d189">&#34;Dacl&#34;</span>]:
+</span></span><span style="display:flex;"><span>	<span style="color:#ca9ee6">for</span> ace <span style="color:#99d1db;font-weight:bold">in</span> sd[<span style="color:#a6d189">&#34;Dacl&#34;</span>]<span style="color:#99d1db;font-weight:bold">.</span>aces:
+</span></span><span style="display:flex;"><span>		ace_object <span style="color:#99d1db;font-weight:bold">=</span> ace[<span style="color:#a6d189">&#34;Ace&#34;</span>]  <span style="color:#737994;font-style:italic"># Ace_Object Vars: Mask, Sid</span>
+</span></span><span style="display:flex;"><span>    ace_mask <span style="color:#99d1db;font-weight:bold">=</span> ace_object[<span style="color:#a6d189">&#34;Mask&#34;</span>][<span style="color:#a6d189">&#34;Mask&#34;</span>]
+</span></span></code></pre></div><p>Após um tratamento sobre os hexadecimais retornados e quais são suas representações com base na documentação da Microsoft, podemos esperar um resultado como esse abaixo. Ressalto que foi utilizado uma conta participante do grupo de Domain Admins.</p>
+<img src="//localhost:1313/images/security-descriptor/image5.jpg">
+<h2 id="conclusão" >
+<div>
+    <a href="#conclus%c3%a3o">
+        #
+    </a>
+    Conclusão
+</div>
+</h2>
+<p>Assim, podemos compreender a relevância do ntSecurityDescriptor no Active Directory e como podemos utilizar dele para encontrar meios para realizar uma escalação de privilégios por meio de objetos presentes no ambiente.  Como citado anteriormente, a ferramenta BloodHound faz um ótimo trabalhando usufruindo desse atributo para construir caminhos e gráficos com base nas informações coletadas do ambiente. Entende-se que tudo isso é principalmente útil para atacantes, todavia, esse tipo de processo também é de grande utilidade também para os times de operações defensivas, visto que poderão encontrar fragilidades na arquitetura monitorada.</p>
+<h2 id="referências" >
+<div>
+    <a href="#refer%c3%aancias">
+        #
+    </a>
+    Referências
+</div>
+</h2>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/adschema/a-ntsecuritydescriptor">https://learn.microsoft.com/en-us/windows/win32/adschema/a-ntsecuritydescriptor</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/adschema/c-samdomainbase">https://learn.microsoft.com/en-us/windows/win32/adschema/c-samdomainbase</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/adschema/c-top">https://learn.microsoft.com/en-us/windows/win32/adschema/c-top</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-string-format?redirectedfrom=MSDN">https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-string-format?redirectedfrom=MSDN</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/secgloss/a-gly">https://learn.microsoft.com/en-us/windows/win32/secgloss/a-gly</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/secgloss/d-gly">https://learn.microsoft.com/en-us/windows/win32/secgloss/d-gly</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists">https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists</a></li>
+<li><a href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/4f4251cc-23b6-44b6-93ba-69688422cb06">https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/4f4251cc-23b6-44b6-93ba-69688422cb06</a></li>
+<li><a href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/7d4dac05-9cef-4563-a058-f108abecce1d">https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/7d4dac05-9cef-4563-a058-f108abecce1d</a></li>
+<li><a href="https://github.com/fortra/impacket/blob/f8899e65f16c50b871863528d419cfb701a5a3e3/impacket/ldap/ldaptypes.py">https://github.com/fortra/impacket/blob/f8899e65f16c50b871863528d419cfb701a5a3e3/impacket/ldap/ldaptypes.py</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/api/iads/ne-iads-ads_rights_enum">https://learn.microsoft.com/en-us/windows/win32/api/iads/ne-iads-ads_rights_enum</a></li>
+<li><a href="https://www.installsetupconfig.com/win32programming/accesscontrollistacl2_1.html">https://www.installsetupconfig.com/win32programming/accesscontrollistacl2_1.html</a></li>
+</ul>
+
+        </div>
+
+    </article>
+
+    
+    
+
+    
+        
+        
+    
+
+    
+
+    
+        
+
+
+    
+
+    
+
+    
+    
+    
+
+        </main>
+        
+            <footer class="common-footer noselect">
+    
+    
+
+    <div class="common-footer-bottom">
+        
+
+        <div style="display: flex; align-items: center; gap:8px">
+            ©  000pp,  2025
+            
+        </div>
+        <div style="display:flex; align-items: center; gap:4px">
+
+            
+            
+
+            
+            
+            
+            
+
+            
+            
+
+            
+        </div>
+        
+    </div>
+
+    <p class="h-card vcard">
+
+    <a href=//localhost:1313/ class="p-name u-url url fn" rel="me">map[name:000pp]</a>
+
+    
+
+    
+</p>
+
+</footer>
+
+        
+    </div>
+</body>
+</html>

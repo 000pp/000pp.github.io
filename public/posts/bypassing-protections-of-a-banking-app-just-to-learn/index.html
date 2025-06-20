@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+
+
+
+
+    
+
+
+
+
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<meta name="theme-name" content="Anubis2">
+
+<title>Bypassing protections of a banking app just to learn - PWN 2 FUN</title>
+
+<meta name="description" content="Learning how to use Frida and other tools to interact with mobile apps.">
+
+
+
+
+
+<link rel="icon" type="image/x-icon" href="//localhost:1313/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="//localhost:1313/favicon.png">
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+
+
+<style>
+  body {
+    visibility: hidden;
+    opacity: 0;
+  }
+</style>
+
+<noscript>
+  <style>
+    body {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</noscript>
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.bc0d4b6e7a72f0edf4f6e696fe84bff6c99cf7557b4513a527c1b3a6fae34f6f.css" integrity="sha256-vA1Lbnpy8O309uaW/oS/9smc91V7RROlJ8GzpvrjT28=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.9c1888ebff42c0224ce04dac10cb2c401f1b77f54f78e8d87d73c3bed781c263.css" integrity="sha256-nBiI6/9CwCJM4E2sEMssQB8bd/VPeOjYfXPDvteBwmM=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.acd606c0fce58853afe0248d37bb41acbbcdd8b1aca2412b6c0fa760da0137f3.css" integrity="sha256-rNYGwPzliFOv4CSNN7tBrLvN2LGsokErbA&#43;nYNoBN/M=">
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+    
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <script src="//localhost:1313/js/script.672e2309c296e07c18bcd08b28d797a56222ff941d65f308fba3158c44885b14.js" type="text/javascript" charset="utf-8" integrity="sha256-Zy4jCcKW4HwYvNCLKNeXpWIi/5QdZfMI&#43;6MVjESIWxQ="></script>
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header class="common-header">
+            
+                <div class="header-top">
+    <div class="header-top-left">
+        <h1 class="site-title noselect">
+    <a href="//localhost:1313/">PWN 2 FUN</a>
+</h1>
+
+        
+
+  
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    
+        <div class="theme-switcher">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-sun-high"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z" /><path d="M6.343 17.657l-1.414 1.414" /><path d="M6.343 6.343l-1.414 -1.414" /><path d="M17.657 6.343l1.414 -1.414" /><path d="M17.657 17.657l1.414 1.414" /><path d="M4 12h-2" /><path d="M12 4v-2" /><path d="M20 12h2" /><path d="M12 20v2" /></svg>
+
+
+</span>
+
+        </div>
+    
+
+    <script>
+        const STORAGE_KEY = 'user-color-scheme'
+        const defaultTheme = "auto"
+
+        let currentTheme
+        let switchButton
+        let autoDefinedScheme = window.matchMedia('(prefers-color-scheme: dark)')
+
+        function switchTheme(e) {
+            currentTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+            if (localStorage) localStorage.setItem(STORAGE_KEY, currentTheme);
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        const autoChangeScheme = e => {
+            currentTheme = e.matches ? 'dark' : 'light'
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            switchButton = document.querySelector('.theme-switcher')
+            currentTheme = detectCurrentScheme()
+
+            if (currentTheme === 'auto') {
+                autoChangeScheme(autoDefinedScheme);
+                autoDefinedScheme.addListener(autoChangeScheme);
+            } else {
+                document.documentElement.setAttribute('data-theme', currentTheme)
+            }
+
+            if (switchButton) {
+                switchButton.addEventListener('click', switchTheme, false)
+            }
+
+            showContent();
+        })
+
+        function detectCurrentScheme() {
+            if (localStorage !== null && localStorage.getItem(STORAGE_KEY)) {
+                return localStorage.getItem(STORAGE_KEY)
+            }
+            if (defaultTheme) {
+                return defaultTheme
+            }
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function showContent() {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = 1;
+        }
+
+        function changeGiscusTheme (theme) {
+            function sendMessage(message) {
+              const iframe = document.querySelector('iframe.giscus-frame');
+              if (!iframe) return;
+              iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+            }
+
+            sendMessage({
+              setConfig: {
+                theme: theme
+              }
+            });
+        }
+    </script>
+
+
+        <ul class="social-icons noselect">
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+    <li>
+            <a href="//localhost:1313/index.xml" title="RSS" rel="me">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-rss"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M4 4a16 16 0 0 1 16 16" /><path d="M4 11a9 9 0 0 1 9 9" /></svg>
+
+
+</span>
+
+            </a>
+        </li>
+    
+
+</ul>
+
+    </div>
+    <div class="header-top-right">
+
+    </div>
+</div>
+
+
+    <nav class="noselect">
+        
+        
+        <a class="" href="//localhost:1313/" title="">Home</a>
+        
+        <a class="" href="//localhost:1313/about/" title="">About</a>
+        
+        <a class="" href="//localhost:1313/tags/" title="">Tags</a>
+        
+        <a class="" href="//localhost:1313/posts/" title="">Archive</a>
+        
+    </nav>
+
+
+
+
+
+
+
+
+
+
+
+
+            
+        </header>
+        <main id="main" tabindex="-1">
+            
+    
+
+    <article class="post h-entry">
+        <div class="post-header">
+            <header>
+                
+                
+                
+                <h1 class="p-name post-title ">Bypassing protections of a banking app just to learn</h1>
+                
+
+            </header>
+            
+
+
+
+<div class="post-info noselect">
+    
+        <div class="post-date dt-published">
+            <time datetime="2025-01-20">2025-01-20</time>
+            
+        </div>
+    
+
+    <a class="post-hidden-url u-url" href="//localhost:1313/posts/bypassing-protections-of-a-banking-app-just-to-learn/">/posts/bypassing-protections-of-a-banking-app-just-to-learn/</a>
+    <a href="//localhost:1313/" class="p-name p-author post-hidden-author h-card" rel="me">map[name:000pp]</a>
+
+
+    <div class="post-taxonomies">
+        
+        
+            <ul class="post-tags">
+                
+                    
+                    <li><a href="//localhost:1313/tags/research">#research</a></li>
+                
+                    
+                    <li><a href="//localhost:1313/tags/mobile">#mobile</a></li>
+                
+                    
+                    <li><a href="//localhost:1313/tags/reverse-engineering">#reverse engineering</a></li>
+                
+                    
+                    <li><a href="//localhost:1313/tags/banking">#banking</a></li>
+                
+            </ul>
+        
+        
+    </div>
+</div>
+
+        </div>
+        
+
+  
+  
+
+
+
+
+  
+  
+  
+  <details class="toc noselect">
+    <summary>Table of Contents</summary>
+    <div class="inner"><nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#im-not-fake-please-let-me-in">I’m not fake, please let me in!</a></li>
+        <li><a href="#fighting-invisible-demons">Fighting invisible demons</a></li>
+        <li><a href="#the-final-fight">The final fight</a></li>
+        <li><a href="#conclusion">Conclusion</a></li>
+        <li><a href="#references">References</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+  </details>
+  
+
+
+
+<script>
+  var toc = document.querySelector(".toc");
+  if (toc) {
+    toc.addEventListener("click", function () {
+      if (event.target.tagName !== "A") {
+        event.preventDefault();
+        if (this.open) {
+          this.open = false;
+          this.classList.remove("expanded");
+        } else {
+          this.open = true;
+          this.classList.add("expanded");
+        }
+      }
+    });
+  }
+</script>
+
+        <div class="content e-content">
+            <p>A long time ago, I was looking for vulnerabilities in a Brazilian bank through a Bug Bounty platform. During that phase, I managed to report quite a few issues to them and earned a good amount of money. However, that platform was shut down, and I ended up stopping my tests on their systems.</p>
+<p>Recently, while browsing HackerOne, I noticed that the same bank is now there, but as a VDP this time. I decided not to test their web applications this time but instead focus on their mobile apps. Looking at the available options, I chose one of the apps that didn’t have many reports and seemed interesting to test.</p>
+<p>I already have a ready environment. In this case, I’m emulating a Pixel 7 Pro using Android Studio, and it’s rooted with the help of <strong>rootAVD</strong> and <strong>Magisk</strong>, which I believe is the easiest way to have an emulated Android device with the necessary permissions.</p>
+<p><a href="https://gitlab.com/newbit/rootAVD">rootAVD</a> is a project developed by “newbit,” aimed at enabling us to root our Android Studio Virtual Device (AVD) using Magisk. It achieves this through a shell or batch script, which makes our lives much easier.</p>
+<p><a href="https://github.com/topjohnwu/Magisk">Magisk</a> is software developed by “topjohnwu” and various other contributors with the goal of allowing customization of Android devices starting from version 6.0. Magisk includes several modules, such as MagiskSU, probably the most famous, which provides root privileges to applications, Magisk Modules, which allows the use of custom modules within Magisk itself, and others.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image.png" alt="image.png"></p>
+<p>I also use the plugin <a href="https://github.com/NVISOsecurity/MagiskTrustUserCerts">MagiskTrustUserCerts</a> by NVISOSecurity, which allowed me to install the Burp Suite certificate as an authority, avoiding issues when using Burp Suite to intercept application requests. The only concern would be dealing with SSL Pinning. We’re not using it at the moment, but it’s worth documenting.</p>
+<p>I recommend installing Android 13.0 with Google APIs so you can access the Play Store and download the apps directly from there. This ensures you have the most up-to-date version, likely free of malware, and functioning as expected. I even tried looking for the same app on sites like APKPure or APKCombo, but I wasn’t successful. Apparently, it hasn’t been listed or uploaded there yet.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%201.png" alt="image.png"></p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%202.png" alt="image.png"></p>
+<p>None of these apps are our target. So, with one of my Google accounts connected to my emulated Android, I can download the app directly from the Play Store and proceed with the rest.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%203.png" alt="image.png"></p>
+<p>After installing the application, I go to my terminal and extract the original APK using adb, in a very simple and practical way, so I can perform some static analyses such as information gathering and reverse engineering using Jadx. I like to use Frida to get the correct package name and use it to identify the correct APK path.</p>
+<p>Android Debug Bridge, or (adb), is a tool that allows debugging Android devices. Through it, I can interact with the AVD we created in Android Studio.</p>
+<p><a href="https://github.com/skylot/jadx">Jadx</a>, on the other hand, is another tool that enables the decompilation of Android Dex files and APK files, which is very important since our target is precisely an Android application.</p>
+<p>Finally, the mighty <a href="https://github.com/frida/frida">Frida</a> is a toolkit designed for developers, reverse engineers, and security researchers, aimed at enabling dynamic instrumentation of applications.</p>
+<p>Below, I used the command <code>frida-ps -Uai</code> to list the applications installed on my AVD. The goal was to capture the full package name of the application.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%204.png" alt="image.png"></p>
+<p>To capture the full path of the application, I use the command <code>adb shell pm path &lt;package name&gt;</code>, then I use <code>adb pull &lt;path&gt;</code> to extract the APK to my local machine.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%205.png" alt="image.png"></p>
+<p>The first thing I like to do is use a set of tools to assist in the process of finding vulnerabilities in the target application. The ones I use the most are:</p>
+<ul>
+<li><strong>apkleaks</strong>: This tool returns various information about the APK, including possible hardcoded secrets, links, strings, and other elements.</li>
+<li><strong>Apepe</strong>: A project of mine that lists various interesting details, such as all activities (including the app&rsquo;s main activity), requested permissions, utilized libraries, and a list of services it uses or consumes. It also attempts to guess the app&rsquo;s programming language based on the extracted content, though it&rsquo;s not very precise.</li>
+</ul>
+<p>I was happy to use my project on this target app because it helped me identify a bug in the tool, which I was fortunately able to fix easily. The issue was with retrieving the <code>app_name</code> from the Androguard library.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%206.png" alt="image.png"></p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%207.png" alt="image.png"></p>
+<p>With all this data collected, I proceed to use Jadx to read the application&rsquo;s source code and begin identifying vulnerabilities. I examine key files, such as the <code>AndroidManifest.xml</code>, to look for intents, content providers, and so on. However, skipping over this step for now, I like to search for <code>onResume()</code> functions to examine the main initializers of the application. This revealed something very important:</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%208.png" alt="image.png"></p>
+<p>As we can see, there are functions in the app that check if the device is rooted, if it is running in a development or staging environment, and if it is an emulator.</p>
+<br>
+<h3 id="im-not-fake-please-let-me-in" >
+<div>
+    <a href="#im-not-fake-please-let-me-in">
+        ##
+    </a>
+    I’m not fake, please let me in!
+</div>
+</h3>
+<p>Let’s start with the <code>isDeviceRooted()</code> function, which is declared in a class called <code>RootUtil</code>. Within the same class, there are three functions that check whether the device is rooted in different ways. The first one is <code>checkRootMethod1</code>.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%209.png" alt="image.png"></p>
+<p>The first check captures the value of the <code>TAGS</code> property from <code>android.os.Build</code> and verifies if its value is <code>test-keys</code>. Another relevant point is that it’s a boolean function, so the final result will simply be <code>true</code> or <code>false</code>.</p>
+<p>The function <code>checkRootMethod2</code> creates an array with the standard paths of several SUID binaries and checks if the file exists using the <code>java.io.File</code> API and the <code>exists()</code> function. It’s worth noting that this is also a boolean function.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2010.png" alt="image.png"></p>
+<p>The last function, <code>checkRootMethod3</code>, executes the <code>which</code> command located at <code>/system/xbin/which</code> to check for any result pointing to the <code>su</code> binary by reading its output.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2011.png" alt="image.png"></p>
+<p>Since all these checks are in the <code>RootUtil</code> class, we can create a JavaScript script and use Frida to intercept these calls and return the value <code>false</code> for each of these functions. This way, the app will always get a response like, “No, the device is not rooted.”</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2012.png" alt="image.png"></p>
+<p>First, we define the class and then interact with each function, passing their names directly through the variable <code>rootUtils</code> that we previously defined. In the end, the key part for each item is simply the <code>return false</code>. It’s also a good idea to alter the <code>TAGS</code> property as a precaution, which can be done using the <code>defineProperty</code> function.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2013.png" alt="image.png"></p>
+<p>Now we just need to launch the app on our emulator using Frida, specifying its path with the <code>-f</code> argument and the JavaScript script we created earlier with the <code>-l</code> argument (don’t forget to start your Frida server).</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2014.png" alt="image.png"></p>
+<p>Strangely, we didn’t see any calls to the <code>checkRootMethod</code> functions, and the app already detected that we’re on an emulator. What’s my idea now? Bypass all protections at once and hope for the best xD. Currently, we have a possible bypass for the root check, so let’s apply the same process to the <code>isEmulator</code> and <code>isDevOrHMLEnvironment</code> functions.</p>
+<p>Using Jadx, I searched for the definition of the word <code>isEmulator()</code> and found something interesting. As shown in the image below, the <code>isEmulator()</code> function is defined in both <code>DeviceUtils.isEmulator()</code> and <code>DeviceUtils.Companion.isEmulator()</code>.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2015.png" alt="image.png"></p>
+<p>Again, these are boolean functions, so we’ll just return <code>false</code> for both and analyze how the application behaves now. The code looks like this:</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2016.png" alt="image.png"></p>
+<p>With this, we’ll call our script again via Frida and observe how the application interacts now.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2017.png" alt="image.png"></p>
+<p>Now, the app no longer immediately detects us as being on an emulator. However, we still have an issue: after a short time, a notification appears at the bottom of the app indicating that something malicious has been detected on our device, and the app will shut down.</p>
+<br>
+<h3 id="fighting-invisible-demons" >
+<div>
+    <a href="#fighting-invisible-demons">
+        ##
+    </a>
+    Fighting invisible demons
+</div>
+</h3>
+<p>What are they detecting now? We&rsquo;ve already bypassed the checks for root, emulator, and development/staging environments, so what&rsquo;s left?</p>
+<p>My first idea was to monitor calls to other system properties, which is done through the <code>System.getProperty</code> function. So, let’s implement a function in our script to tell us what is being called and the values being sent.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2018.png" alt="image.png"></p>
+<p>Note that I’m using the <code>overload</code> function because the <code>System.getProperty</code> method will likely be called multiple times with different parameters and so on.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2019.png" alt="image.png"></p>
+<p>As we can see, several properties are being called, and some of them have unexpected values. One very important one is <code>http.agent</code>, which clearly indicates it’s an emulator. Therefore, we’ll modify the return value for these properties.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2020.png" alt="image.png"></p>
+<p>Even with all this configured, the app still closes. So, the issue doesn’t seem to be limited to property calls—there must be something else. Then, I got the idea to enumerate JSON objects, thinking that this information might be stored or sent to a server. I added the following code to my script:</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2021.png" alt="image.png"></p>
+<p>Running the app again with Frida and our script, the result is as follows:</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2022.png" alt="image.png"></p>
+<p>The app&rsquo;s defense mechanism is detecting the presence of Magisk. The other reasons are likely also due to Magisk. In the censored section, the name of the solution protecting the app is displayed. So, now we need to bypass this solution!</p>
+<p>Magisk offers a module in its settings to change the package name. Let’s change it to something considered &ldquo;legitimate&rdquo; xD. I chose &ldquo;SpotifyManager,&rdquo; but any other name will work too.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2023.png" alt="image.png"></p>
+<p>After this, Magisk will make the necessary changes, and we’ll need to confirm a few other things, though it’s unnecessary to detail them here. If we go back to our terminal and run the script again, we’ll see a surprise!</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2024.png" alt="image.png"></p>
+<p>Magisk is no longer being detected by the package name, leaving only the options &ldquo;Superuser exists&rdquo; and &ldquo;Superuser system app installed.&rdquo;</p>
+<p>To resolve this, it’s quite simple: we just need to install the &ldquo;Shamiko&rdquo; and &ldquo;LSPosed&rdquo; modules in Magisk, and everything will work fine. These modules can successfully evade detection.</p>
+<p><strong>Shamiko</strong> is a module for Zygisk that hides the root process of Magisk, the Zygisk itself, and its modules, ensuring that protections cannot detect them through conventional means. For context, Zygisk is a Magisk module that allows us to run code in applications.</p>
+<p>To install Shamiko, go to its creator’s GitHub page and download the zip file available in the GitHub Releases section.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2025.png" alt="image.png"></p>
+<p>After downloading the zip file, move it to your sdcard with the command <code>adb push &lt;file&gt; /sdcard</code> and install it in Magisk. After installation, the &ldquo;Restart&rdquo; button will be available. Click it and wait for the AVD to reboot.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2026.png" alt="image.png"></p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2027.png" alt="image.png"></p>
+<p>Once Shamiko is installed, let’s install <strong>LSPosed</strong>. LSPosed is a solution that allows us to modify the behavior of our Android device and system components in real-time. It’s available in another repository by the same creator. Download the zip, move it to your sdcard, and install it again. After installation, restart the emulator again.</p>
+<p>With both installed, go to the Magisk settings and enable the &ldquo;Enforce DenyList&rdquo; option. I recommend restarting the emulator once more just to be sure. Then, navigate to the &ldquo;Configure DenyList&rdquo; option.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2028.png" alt="image.png"></p>
+<p>Now, find the target app and check its checkbox. This will enable the DenyList for the app we want.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2029.png" alt="image.png"></p>
+<p>With that done, if we run our previous script again, we can see that the <code>reasonData</code> no longer contains Sudo/Superuser information, but it still detects the environment as an emulator.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2030.png" alt="image.png"></p>
+<p>Now that we’ve hidden the root mode, let’s move on to the final step: figuring out how to convince the protection mechanism that we’re not an emulator.</p>
+<br>
+<h3 id="the-final-fight" >
+<div>
+    <a href="#the-final-fight">
+        ##
+    </a>
+    The final fight
+</div>
+</h3>
+<p>For quite some time, and with the help of some friends, we tried various ways to bypass the emulator detection—ranging from altering system properties to simulate a real device, to hooking some functions to understand what was actually happening behind the scenes. Unfortunately, we didn’t succeed until now.</p>
+<p>The solution was to combine all the procedures we performed, the Frida script we developed, and a real device. In this case, I’d like to thank my friend <a href="https://github.com/thalysonz">thalysonz</a> who conducted this test for me, as I don’t have a real Android device to test on. The result was that we could now run the application without being detected for the previously mentioned reasons, allowing us to proceed with any other tests we wanted to perform.</p>
+<p><img src="//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2031.png" alt="image.png"></p>
+<p>If, in the near future, we discover a way to bypass this emulator detection, I’ll update this article with the solution that made it possible.</p>
+<br>
+<h3 id="conclusion" >
+<div>
+    <a href="#conclusion">
+        ##
+    </a>
+    Conclusion
+</div>
+</h3>
+<p>In the end, it was an incredibly educational process. Since I don’t have much experience with mobile pentesting, dealing directly with a banking application that has several protections—though perhaps not as many as other banks—offered a real challenge throughout this process.</p>
+<p>I hope you were able to learn something from this article or that it served as inspiration for you to continue your studies. Thank you very much!</p>
+<br>
+<h3 id="references" >
+<div>
+    <a href="#references">
+        ##
+    </a>
+    References
+</div>
+</h3>
+<ul>
+<li><a href="https://github.com/dwisiswant0/apkleaks">https://github.com/dwisiswant0/apkleaks</a></li>
+<li><a href="https://github.com/oppsec/Apepe">https://github.com/oppsec/Apepe</a></li>
+<li><a href="https://gitlab.com/newbit/rootAVD">https://gitlab.com/newbit/rootAVD</a></li>
+<li><a href="https://github.com/topjohnwu/Magisk">https://github.com/topjohnwu/Magisk</a></li>
+<li><a href="https://8ksec.io/advanced-frida-mobile/">https://8ksec.io/advanced-frida-mobile/</a></li>
+<li><a href="https://labs.cognisys.group/posts/Writing-your-first-Frida-script-for-Android/">https://labs.cognisys.group/posts/Writing-your-first-Frida-script-for-Android/</a></li>
+<li><a href="https://github.com/skylot/jadx">https://github.com/skylot/jadx</a></li>
+<li><a href="https://github.com/LSPosed/LSPosed">https://github.com/LSPosed/LSPosed</a></li>
+</ul>
+
+        </div>
+
+    </article>
+
+    
+    
+
+    
+        
+        
+            <h3 class="read-next-title noselect">Read next</h3>
+            <ul class="read-next-posts noselect">
+                
+                <li><a href="//localhost:1313/posts/discovering-0-day-authenticated-rce-on-my-router/">Discovering a 0-day Authenticated RCE on my router</a></li>
+                
+            </ul>
+        
+    
+
+    
+
+    
+        
+
+
+    
+
+    
+
+    
+    
+    
+
+        </main>
+        
+            <footer class="common-footer noselect">
+    
+    
+
+    <div class="common-footer-bottom">
+        
+
+        <div style="display: flex; align-items: center; gap:8px">
+            ©  000pp,  2025
+            
+        </div>
+        <div style="display:flex; align-items: center; gap:4px">
+
+            
+            
+
+            
+            
+            
+            
+
+            
+            
+
+            
+        </div>
+        
+    </div>
+
+    <p class="h-card vcard">
+
+    <a href=//localhost:1313/ class="p-name u-url url fn" rel="me">map[name:000pp]</a>
+
+    
+
+    
+</p>
+
+</footer>
+
+        
+    </div>
+</body>
+</html>

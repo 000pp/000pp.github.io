@@ -14,10 +14,483 @@
 
     
     <copyright>© 000pp</copyright>
-    <lastBuildDate>Fri, 22 Nov 2024 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 20 Feb 2025 00:00:00 +0000</lastBuildDate>
     
     <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Bypassing Flutter Certificate Pinning</title>
+      <link>/posts/bypassing-flutter-certificate-pinning/</link>
+      <pubDate>Thu, 20 Feb 2025 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/bypassing-flutter-certificate-pinning/</guid>
+      <description>&lt;p&gt;Continuing with my mobile pentest studies—and, of course, doing mobile pentests at work—it&amp;rsquo;s pretty common to run into different mobile apps built with various programming languages. For example, you’ll find apps developed in Java, Kotlin, Flutter, Xamarin, Swift… and a bunch of others.&lt;/p&gt;
+&lt;p&gt;So far, I’ve only worked with Java and Flutter apps, but I’m looking forward to exploring others. What am I getting at here? Basically, what&amp;rsquo;s the difference between decompiling a Java app and a Flutter app? Simple: you can&amp;rsquo;t just open Flutter apps in JADX and call it a day :(&lt;/p&gt;
+&lt;p&gt;You&amp;rsquo;ll probably find only a few class files that won’t be nearly as helpful as you&amp;rsquo;d hope. For example, here’s the app I’m currently wrestling with:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;As you can see, we only have a &lt;code&gt;MainActivity&lt;/code&gt; file, a class file with a random name, and the &lt;code&gt;BuildConfig&lt;/code&gt; file (don’t forget to check the BuildConfig file—you might find something useful there). When I see this, two scenarios come to mind:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;The rest of the app is obfuscated.&lt;/li&gt;
+&lt;li&gt;The app is built with Flutter.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;I went with the second option. Why? Because it&amp;rsquo;s pretty easy to identify a Flutter app just by looking at the extracted content from the APK file (I used apktool for this) and checking the lib directory.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%201.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;For now, we&amp;rsquo;re most interested in these two files: &lt;code&gt;libflutter.so&lt;/code&gt; and &lt;code&gt;libapp.so&lt;/code&gt;. For those who don’t know, Flutter is a software development kit created by Google, commonly used to develop applications for Android, iOS, Linux, macOS, and other platforms. However, it’s primarily popular for mobile apps.&lt;/p&gt;
+&lt;p&gt;The &lt;code&gt;libflutter.so&lt;/code&gt; file contains the Flutter engine, mainly developed in C++. One of its key components is Skia (a 2D graphics library), which renders the UI and displays it in the &lt;code&gt;FlutterView&lt;/code&gt;, also known as the &lt;em&gt;Raster Thread&lt;/em&gt;. There’s also the &lt;em&gt;Platform Thread&lt;/em&gt;, which interacts with the native APIs of Android and iOS. Finally, we have the &lt;em&gt;UI Thread&lt;/em&gt;, responsible for executing Dart code and managing widgets.&lt;/p&gt;
+&lt;p&gt;On the other hand, &lt;code&gt;libapp.so&lt;/code&gt; is unique to each Flutter application. It contains the compiled Dart project—essentially, the mobile app’s source code. This code is compiled into native machine code using AOT (Ahead-of-Time) compilation, meaning the code is translated into machine instructions before the app actually runs, typically during the production build.&lt;/p&gt;
+&lt;p&gt;As stated in the Dart documentation, AOT-compiled code guarantees better performance during application execution, such as a fast startup and consistent runtime performance, unlike JIT-compiled code, which is slower at startup but can reach better performance after some time when necessary runtime optimizations occur. Naturally, during a fast development cycle, the Dart VM offers developers JIT compilation features like hot reload, live metrics collection, and debugging support, which help a lot in thoroughly testing the application.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://miro.medium.com/v2/resize:fit:720/format:webp/1*oVVba1QhXL1hUBKE9sfenw.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;a href=&#34;https://medium.com/flutter/flutter-dont-fear-the-garbage-collector-d69b3ff1ca30&#34;&gt;https://medium.com/flutter/flutter-dont-fear-the-garbage-collector-d69b3ff1ca30&lt;/a&gt;&lt;/p&gt;&lt;/blockquote&gt;
+&lt;p&gt;When apps are finally ready to be deployed to web applications or app stores, you can compile your application with the Dart AOT compiler to native ARM or x64 machine code, which, as discussed earlier, will offer better startup performance for your entire application. The AOT-compiled code will run inside the Dart runtime environment with a memory management system that employs fast garbage collection and a generational garbage collector.&lt;/p&gt;
+&lt;p&gt;In the final process, the &lt;code&gt;libflutter.so&lt;/code&gt; file launches the Flutter engine and sets up the environment, while the &lt;code&gt;libapp.so&lt;/code&gt; file is loaded by the Flutter engine. This allows the Dart code to run within the Flutter engine, powered by &lt;code&gt;libflutter.so&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%202.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Flutter Architectural Overview - Flutter&lt;/p&gt;&lt;/blockquote&gt;
+&lt;br&gt;
+&lt;h2 id=&#34;less-talk-show-me-the-code&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#less-talk-show-me-the-code&#34;&gt;
+        #
+    &lt;/a&gt;
+    Less talk, show me the code!
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;To provide more context, if we open a generic Java application in decompilation tools like &lt;a href=&#34;https://github.com/skylot/jadx&#34;&gt;JADX&lt;/a&gt; and the app does not use any obfuscation solution, the reverse-engineering process becomes extremely easy since the code is human-readable. For example, I downloaded a specific application from the Play Store and decompiled the APK file using JADX. By following the package name in the Source Code tab and accessing the Java files, you can see that everything is much easier to understand.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/java-code-example.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Getting Flutter&amp;rsquo;s apps source code isn’t exactly trivial. You could open the &lt;code&gt;libapp.so&lt;/code&gt; file in Ghidra, IDA, BinaryNinja, or whatever tool you prefer, and try your best to figure out what&amp;rsquo;s going on. But honestly, I prefer a different approach. It’s not a secret method, just a more efficient one (at least in my opinion).&lt;/p&gt;
+&lt;p&gt;Thankfully, &lt;a href=&#34;https://github.com/worawit&#34;&gt;Worawit&lt;/a&gt;, along with six other contributors, created the &lt;a href=&#34;https://github.com/worawit/blutter&#34;&gt;Blutter&lt;/a&gt; project. Blutter is a Flutter reverse-engineering tool that supports arm64 and allows lazy people like us to extract more readable code and structure from a Flutter app. It’s super simple to use, though you&amp;rsquo;ll need some libraries and dependencies set up. In my case (MacOS), I had to install &lt;code&gt;cmake&lt;/code&gt;, &lt;code&gt;ninja&lt;/code&gt;, &lt;code&gt;pkg-config&lt;/code&gt;, &lt;code&gt;icu4c&lt;/code&gt;, &lt;code&gt;llvm&lt;/code&gt;, and a few others. BUT! For actually running Blutter, all you need is a Python script.&lt;/p&gt;
+&lt;p&gt;As the Blutter README explains, you just need to run the Python script, specify the path to the &lt;code&gt;arm64-v8a&lt;/code&gt; directory, and set an output directory:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-css&#34; data-lang=&#34;css&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ca9ee6&#34;&gt;python3&lt;/span&gt; &lt;span style=&#34;color:#ca9ee6&#34;&gt;blutter&lt;/span&gt;.&lt;span style=&#34;color:#e5c890&#34;&gt;py&lt;/span&gt; &lt;span style=&#34;color:#ca9ee6&#34;&gt;path&lt;/span&gt;&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;/&lt;/span&gt;&lt;span style=&#34;color:#ca9ee6&#34;&gt;to&lt;/span&gt;&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;/&lt;/span&gt;&lt;span style=&#34;color:#ca9ee6&#34;&gt;app&lt;/span&gt;&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;/&lt;/span&gt;&lt;span style=&#34;color:#ca9ee6&#34;&gt;lib&lt;/span&gt;&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;/&lt;/span&gt;&lt;span style=&#34;color:#ca9ee6&#34;&gt;arm64-v8a&lt;/span&gt; &lt;span style=&#34;color:#ca9ee6&#34;&gt;out_dir&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;After that, Blutter compiles the necessary libraries and extracts some resources to execute the reverse-engineering process. Hopefully, after a few minutes, your output will look similar to mine. If any errors occur during this process or your PC crashes, make sure to read the stack trace carefully and check the Blutter GitHub repository&amp;rsquo;s Issues tab for similar problems. For added context, I&amp;rsquo;m running this on a MacBook, I haven&amp;rsquo;t tried Blutter on any other OS yet.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%203.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;If we navigate to our previously created output directory (in this case, I named it &lt;strong&gt;decompiled_code&lt;/strong&gt;) and access the files, we now see a bunch of directories. It contains all the libraries used by the app and the app itself. If you look further, you can find your targeted directory based on the application package name.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%205.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;The blurred directories are our target. From here, you can either dig through the countless files Blutter extracted or, like me, open the directory in VSCode for a more user-friendly overview. You&amp;rsquo;re probably going to see a structure similar to the image below. Now it&amp;rsquo;s 10 times easier to understand the application architecture and focus on the most important parts of the code.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%206.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Now we have a much better environment for reverse engineering the mobile application and searching for vulnerabilities. I highly recommend using &lt;a href=&#34;https://github.com/gitleaks/gitleaks&#34;&gt;gitleaks&lt;/a&gt; or any secret-finding tool (TruffleHog, Semgrep) to identify low-hanging fruits. I did this and found some interesting results, but that&amp;rsquo;s not the focus of this article, so we will skip that part.&lt;/p&gt;
+&lt;br&gt;
+&lt;h2 id=&#34;ssl-pinning-for-you-not-for-me&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#ssl-pinning-for-you-not-for-me&#34;&gt;
+        #
+    &lt;/a&gt;
+    SSL Pinning for you, not for me!
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;SSL Pinning&lt;/strong&gt; (or &lt;strong&gt;Certificate Pinning&lt;/strong&gt;) is a technique that helps developers secure their mobile apps from Man-in-the-Middle (MITM) attacks. It ensures that the app only trusts specific certificates instead of the entire certificate chain. Instead of trusting any valid certificate chain, the application stores a copy of the server&amp;rsquo;s certificate or public key and verifies if the connection uses that exact certificate.&lt;/p&gt;
+&lt;p&gt;In the context of SSL Pinning, there are different pinning approaches. For example, we have &lt;strong&gt;Public Key Pinning&lt;/strong&gt;, which is a mechanism for sites to specify which certificate authorities have issued valid certificates for that specific site, and to reject TLS connections to those sites if the used certificate is not issued by a known-good CA. The idea is also to prevent man-in-the-middle attacks by hard-coding the public key of the server&amp;rsquo;s SSL certificate instead of the entire certificate. In this way, the client will check if the server certificate contains the same public key that is hard-coded in the application code. The main advantage of Public Key Pinning is that even if the server certificate changes, the client will still trust the server if the public key remains the same, although it is harder to implement.&lt;/p&gt;
+&lt;p&gt;Another method is &lt;strong&gt;SPKI Pinning&lt;/strong&gt;. The Subject Public Key Info (SPKI) is basically the key with a bit more salt, it can include the algorithm used for encoding or other parameters. SPKI is obtained from the &lt;strong&gt;Certificate Signing Request (CSR)&lt;/strong&gt;, which collects the necessary information from a pair of public and private keys. The use of SPKI Pinning is not very convenient because you will need to release a mandatory update of your app when the certificate gets renewed, which will probably make things harder to maintain. It is possible to &amp;ldquo;bypass&amp;rdquo; this problem if you keep the same Certificate Signing Request (CSR) on every renewal process, but that violates the key rotation principle, which is the process of replacing old encryption keys with new ones to reduce the risk of compromised keys.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%208.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;While analyzing the source code extracted by Blutter, I found something interesting that caught my attention. In the project files, there was a file called &lt;code&gt;dio_http_service_imp.dart&lt;/code&gt;. &lt;a href=&#34;https://pub.dev/packages/dio&#34;&gt;Dio&lt;/a&gt; is a popular HTTP networking package for Dart/Flutter, supporting TLS connections. From the official Dio documentation, this is the basic implementation:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-javascript&#34; data-lang=&#34;javascript&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ca9ee6&#34;&gt;void&lt;/span&gt; initAdapter() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ca9ee6&#34;&gt;const&lt;/span&gt; &lt;span style=&#34;color:#99d1db&#34;&gt;String&lt;/span&gt; fingerprint &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#39;ee5ce1dfa7a53657c545c62b65802e4272878dabd65c0aadcf85783ebb0b4d5c&amp;#39;&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  dio.httpClientAdapter &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; IOHttpClientAdapter(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    createHttpClient&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;:&lt;/span&gt; () {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#ca9ee6&#34;&gt;final&lt;/span&gt; HttpClient client &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; HttpClient(context&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;:&lt;/span&gt; SecurityContext(withTrustedRoots&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#ef9f76&#34;&gt;false&lt;/span&gt;));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      client.badCertificateCallback &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; (cert, host, port) =&amp;gt; &lt;span style=&#34;color:#ef9f76&#34;&gt;true&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#ca9ee6&#34;&gt;return&lt;/span&gt; client;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    },
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    validateCertificate&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;:&lt;/span&gt; (cert, host, port) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#ca9ee6&#34;&gt;if&lt;/span&gt; (cert &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ef9f76&#34;&gt;null&lt;/span&gt;) &lt;span style=&#34;color:#ca9ee6&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#ef9f76&#34;&gt;false&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#ca9ee6&#34;&gt;return&lt;/span&gt; fingerprint &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;==&lt;/span&gt; sha256.convert(cert.der).toString();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    },
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  );
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;As we can see above, we start by defining a variable called &lt;strong&gt;fingerprint&lt;/strong&gt; that will contain the SHA256 hash of the public certificate key. After that, we create the HttpClient, ensuring that the SecurityContext is set with &lt;strong&gt;withTrustedRoots&lt;/strong&gt; set to false so that we don&amp;rsquo;t trust any certificate just because its root cert is trusted. Furthermore, we check if the certificate fingerprint matches the SHA256 hash and ensure that at least one certificate is being supplied.&lt;/p&gt;
+&lt;p&gt;It works perfectly for servers that have a self-signed certificate, however, it will not work for external certificates issued by AWS, Let&amp;rsquo;s Encrypt, or other third parties. Therefore, we can verify the root of the HTTPS certificate that is provided by the server. The code below is an example of using a static PEM certificate and SecurityContext. It also supports PKCS#12 certificates, but PKCS#12 certificates require a password to be used, which exposes the password in the code; hence, the project does not recommend using them in common cases.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-javascript&#34; data-lang=&#34;javascript&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ca9ee6&#34;&gt;void&lt;/span&gt; initAdapter() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#99d1db&#34;&gt;String&lt;/span&gt; PEM &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#39;XXXXX&amp;#39;&lt;/span&gt;; &lt;span style=&#34;color:#737994;font-style:italic&#34;&gt;// Root certificate content
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#737994;font-style:italic&#34;&gt;&lt;/span&gt;  dio.httpClientAdapter &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; IOHttpClientAdapter(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    onHttpClientCreate&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;:&lt;/span&gt; (_) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#ca9ee6&#34;&gt;final&lt;/span&gt; SecurityContext sc &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; SecurityContext();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      sc.setTrustedCertificates(File(pathToTheCertificate));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#ca9ee6&#34;&gt;final&lt;/span&gt; HttpClient client &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; HttpClient(context&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;:&lt;/span&gt; sc);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#ca9ee6&#34;&gt;return&lt;/span&gt; client;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    },
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  );
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;The most interesting part is this line &lt;code&gt;sc.setTrustedCertificates(File(pathToTheCertificate));&lt;/code&gt; This indicates that the app expects a static certificate file. After reading &lt;a href=&#34;https://medium.com/@melkia.med.taki/how-to-use-tls-ssl-in-flutter-with-dio-15eda4f80baf&#34;&gt;this article by Mohamed Malkia&lt;/a&gt;, I immediately searched the source code for &lt;strong&gt;.pem&lt;/strong&gt; and &lt;strong&gt;.key&lt;/strong&gt; extensions. And guess what? I found actual references to these files:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%209.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Going back to VSCode and using the search function, I typed &lt;code&gt;.pem&lt;/code&gt; in the &amp;ldquo;Search&amp;rdquo; field and immediately got two references in the code, again in the &lt;code&gt;dio_http_service_imp.dart&lt;/code&gt; file. Acessing these files we can get more details about the usage of the Dio package.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2010.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2012.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2013.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;The app reads the certificate bytes and implements them using Dart&amp;rsquo;s SecurityContext methods &lt;strong&gt;useCertificateChainBytes&lt;/strong&gt; and &lt;strong&gt;usePrivateKeyBytes&lt;/strong&gt;. According to the documentation:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;useCertificateChainBytes: Sets the chain of X.509 certificates served by the SecureServerSocket during secure connections, including the server certificate.&lt;/li&gt;
+&lt;li&gt;usePrivateKeyBytes: Sets the private key for the corresponding certificate.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2014.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Interestingly, the application doesn&amp;rsquo;t use standard ports like 443, 80, or 8080. Instead, the API is hosted on port &lt;strong&gt;444&lt;/strong&gt;. This is crucial for properly configuring our proxy because if we try intercepting ports 443, 80, or 8080, we would probably only capture requests from third-party sources rather than those from the targeted application. Therefore, make sure to identify where the application is actually consuming data so that no important requests are missed.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2015.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;It is important to note that every Certificate Pinning mechanism can be bypassed if the attacker has the necessary time and patience. The main idea of these mechanisms is to offer more security to users, reducing risk and making attackers&amp;rsquo; lives harder, but it will always be a cat-and-mouse game until vendors like Google and Apple develop technology to mitigate this problem (and I’m not even sure if that’s possible).&lt;/p&gt;
+&lt;br&gt;
+&lt;h2 id=&#34;intercept-intercept-and-intercept&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#intercept-intercept-and-intercept&#34;&gt;
+        #
+    &lt;/a&gt;
+    Intercept, intercept and intercept
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;After all this analysis, we&amp;rsquo;re ready to intercept the traffic. Here&amp;rsquo;s what we need to do:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Create IPTables rules to redirect the traffic.&lt;/li&gt;
+&lt;li&gt;Configure the proxy on our Android device (I&amp;rsquo;m using an emulated Pixel 9 Pro).&lt;/li&gt;
+&lt;li&gt;Set up Burp Suite.&lt;/li&gt;
+&lt;li&gt;Use the NVISO disable-flutter-tls script.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Starting with IPTables, IPTables is a utility program from Linux that helps users configure network rules. In our case, it&amp;rsquo;s a really simple process—we just need to redirect the incoming traffic from port 444 to port 8080, where our Burp Suite proxy is running. The command I used for this is:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-java&#34; data-lang=&#34;java&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#99d1db&#34;&gt;emu64a&lt;/span&gt;:&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;/&lt;/span&gt; iptables &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;t nat &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;A OUTPUT &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;p tcp &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;--&lt;/span&gt;dport 444 &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;j DNAT &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;--&lt;/span&gt;to&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;destination &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;&amp;lt;&lt;/span&gt;local&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;ip&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;&amp;gt;&lt;/span&gt;:8080
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#99d1db&#34;&gt;emu64a&lt;/span&gt;:&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;/&lt;/span&gt; iptables &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;t nat &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;A POSTROUTING &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;p tcp &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;d &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;&amp;lt;&lt;/span&gt;local&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;ip&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;--&lt;/span&gt;dport 8080 &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;-&lt;/span&gt;j MASQUERADE
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;After that, we need to go to our Wi-Fi settings on our Android device and change the proxy setting from “None” to “Manual,” specifying the host and port we want. In this case, the host will be your local IP and the port will be the same as the Burp Suite proxy. This will allow our emulated device to communicate with our Burp Suite proxy client.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2016.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Now, for Burp Suite, we need to take the PEM and KEY files that are statically stored in the assets directory from the decompiled mobile app and generate a PKCS#12 file to later import into Burp Suite TLS settings. Why PKCS#12? Because Burp Suite TLS currently only supports PEM certificates.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;openssl pkcs12 -export -out file.p12 -inkey key_file.key -in pem_file.pem -certifile pem_file.pem
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Here, the flags &lt;code&gt;-export&lt;/code&gt; and &lt;code&gt;-out&lt;/code&gt; specify that we want to write the certificate&amp;rsquo;s content to an output file. The &lt;code&gt;-inkey&lt;/code&gt; flag specifies the private key from the certificate, combined with the &lt;code&gt;-in&lt;/code&gt; and &lt;code&gt;-certifile&lt;/code&gt; flags to indicate to OpenSSL which files are our certificates—we can repeat the PEM certificate file here.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2017.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Now, go to your Burp Suite settings, navigate to the Network tab, and click on the “TLS” section. Scroll down to “Client TLS Certificates” and click the “Add” button to add a new certificate.&lt;/p&gt;
+&lt;p&gt;In the “Destination host” input, enter the host address from the API or website whose traffic you want to intercept (you don&amp;rsquo;t need to specify the port), and be sure to click the “File (PKCS#12)” radio button because you need to import your PKCS#12 file. After that, click the “Next” button.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2018.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Next, click the “Select file” button and locate the .p12 file you generated using the OpenSSL command. During the process of generating the file with OpenSSL, you will be prompted to set a password; you must enter the same password in the “Password” field below the “Certificate file” field.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2019.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;If everything goes well, your file will be loaded and you can even see some information about the imported certificate.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2020.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Now for the final steps with Burp Suite, go to the Proxy settings and make sure the “Bind to port” is the same from the IPTables and change the “Bind to address” from “Specific addres” to “All interfaces” making sure we actually can intercept the traffic. After that, go the “Request handling” tab and check the “Support invisible proxying” checkbox.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2021.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2022.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;To finish, download the NVISOsecurity Frida script to disable Flutter’s TLS verification, &lt;a href=&#34;https://github.com/NVISOsecurity/disable-flutter-tls-verification&#34;&gt;you can find it here&lt;/a&gt;. This script uses pattern matching to find &lt;strong&gt;ssl_verify_peer_cert&lt;/strong&gt; in the &lt;strong&gt;handshake.cc&lt;/strong&gt; file. The &lt;strong&gt;handshake.cc&lt;/strong&gt; file is part of the &lt;a href=&#34;https://github.com/google/boringssl/&#34;&gt;BoringSSL project&lt;/a&gt;, a fork of OpenSSL used by Chrome/Chromium and Android. To execute the script, ensure that the Frida server is running on your Android device (it can be done via ADB) and run the following command:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;frida -U -f your.package.name -l disable-flutter-tls.js --no-pause
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Don&amp;rsquo;t forget that you need to have the Burp Suite certificate installed on your device. There are various methods to do this, so I won&amp;rsquo;t cover that process here; however, you can find plenty of resources online that explain how to do it.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2023.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Frida will run the app for us, so we go to Burp Suite and “HTTP History” tab we can see that now we can successfully intercept the app HTTP/HTTPS traffic.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-flutter-certificate-pinning/image%2024.png&#34; alt=&#34;image&#34;&gt;&lt;/p&gt;
+&lt;br&gt;
+&lt;h2 id=&#34;references&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#references&#34;&gt;
+        #
+    &lt;/a&gt;
+    References
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://docs.flutter.dev/&#34;&gt;https://docs.flutter.dev/&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://dart.dev/overview&#34;&gt;https://dart.dev/overview&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://onuoha.medium.com/how-does-jit-and-aot-work-in-dart-cab2f31d9cb5&#34;&gt;https://onuoha.medium.com/how-does-jit-and-aot-work-in-dart-cab2f31d9cb5&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/worawit/blutter&#34;&gt;https://github.com/worawit/blutter&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://wiki.mozilla.org/SecurityEngineering/Public_Key_Pinning&#34;&gt;https://wiki.mozilla.org/SecurityEngineering/Public_Key_Pinning&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://oleksandr-stepanov.medium.com/ssl-pinning-how-to-make-it-right-ecc5c9844215&#34;&gt;https://oleksandr-stepanov.medium.com/ssl-pinning-how-to-make-it-right-ecc5c9844215&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://owasp.org/www-community/controls/Certificate_and_Public_Key_Pinning&#34;&gt;https://owasp.org/www-community/controls/Certificate_and_Public_Key_Pinning&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://medium.com/@melkia.med.taki/how-to-use-tls-ssl-in-flutter-with-dio-15eda4f80baf&#34;&gt;https://medium.com/@melkia.med.taki/how-to-use-tls-ssl-in-flutter-with-dio-15eda4f80baf&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://api.flutter.dev/flutter/dart-io/SecurityContext/usePrivateKeyBytes.html&#34;&gt;https://api.flutter.dev/flutter/dart-io/SecurityContext/usePrivateKeyBytes.html&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://api.flutter.dev/flutter/dart-io/SecurityContext/useCertificateChainBytes.html&#34;&gt;https://api.flutter.dev/flutter/dart-io/SecurityContext/useCertificateChainBytes.html&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/NVISOsecurity/disable-flutter-tls-verification&#34;&gt;https://github.com/NVISOsecurity/disable-flutter-tls-verification&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Bypassing protections of a banking app just to learn</title>
+      <link>/posts/bypassing-protections-of-a-banking-app-just-to-learn/</link>
+      <pubDate>Mon, 20 Jan 2025 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/bypassing-protections-of-a-banking-app-just-to-learn/</guid>
+      <description>&lt;p&gt;A long time ago, I was looking for vulnerabilities in a Brazilian bank through a Bug Bounty platform. During that phase, I managed to report quite a few issues to them and earned a good amount of money. However, that platform was shut down, and I ended up stopping my tests on their systems.&lt;/p&gt;
+&lt;p&gt;Recently, while browsing HackerOne, I noticed that the same bank is now there, but as a VDP this time. I decided not to test their web applications this time but instead focus on their mobile apps. Looking at the available options, I chose one of the apps that didn’t have many reports and seemed interesting to test.&lt;/p&gt;
+&lt;p&gt;I already have a ready environment. In this case, I’m emulating a Pixel 7 Pro using Android Studio, and it’s rooted with the help of &lt;strong&gt;rootAVD&lt;/strong&gt; and &lt;strong&gt;Magisk&lt;/strong&gt;, which I believe is the easiest way to have an emulated Android device with the necessary permissions.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://gitlab.com/newbit/rootAVD&#34;&gt;rootAVD&lt;/a&gt; is a project developed by “newbit,” aimed at enabling us to root our Android Studio Virtual Device (AVD) using Magisk. It achieves this through a shell or batch script, which makes our lives much easier.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://github.com/topjohnwu/Magisk&#34;&gt;Magisk&lt;/a&gt; is software developed by “topjohnwu” and various other contributors with the goal of allowing customization of Android devices starting from version 6.0. Magisk includes several modules, such as MagiskSU, probably the most famous, which provides root privileges to applications, Magisk Modules, which allows the use of custom modules within Magisk itself, and others.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;I also use the plugin &lt;a href=&#34;https://github.com/NVISOsecurity/MagiskTrustUserCerts&#34;&gt;MagiskTrustUserCerts&lt;/a&gt; by NVISOSecurity, which allowed me to install the Burp Suite certificate as an authority, avoiding issues when using Burp Suite to intercept application requests. The only concern would be dealing with SSL Pinning. We’re not using it at the moment, but it’s worth documenting.&lt;/p&gt;
+&lt;p&gt;I recommend installing Android 13.0 with Google APIs so you can access the Play Store and download the apps directly from there. This ensures you have the most up-to-date version, likely free of malware, and functioning as expected. I even tried looking for the same app on sites like APKPure or APKCombo, but I wasn’t successful. Apparently, it hasn’t been listed or uploaded there yet.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%201.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%202.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;None of these apps are our target. So, with one of my Google accounts connected to my emulated Android, I can download the app directly from the Play Store and proceed with the rest.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%203.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;After installing the application, I go to my terminal and extract the original APK using adb, in a very simple and practical way, so I can perform some static analyses such as information gathering and reverse engineering using Jadx. I like to use Frida to get the correct package name and use it to identify the correct APK path.&lt;/p&gt;
+&lt;p&gt;Android Debug Bridge, or (adb), is a tool that allows debugging Android devices. Through it, I can interact with the AVD we created in Android Studio.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://github.com/skylot/jadx&#34;&gt;Jadx&lt;/a&gt;, on the other hand, is another tool that enables the decompilation of Android Dex files and APK files, which is very important since our target is precisely an Android application.&lt;/p&gt;
+&lt;p&gt;Finally, the mighty &lt;a href=&#34;https://github.com/frida/frida&#34;&gt;Frida&lt;/a&gt; is a toolkit designed for developers, reverse engineers, and security researchers, aimed at enabling dynamic instrumentation of applications.&lt;/p&gt;
+&lt;p&gt;Below, I used the command &lt;code&gt;frida-ps -Uai&lt;/code&gt; to list the applications installed on my AVD. The goal was to capture the full package name of the application.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%204.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;To capture the full path of the application, I use the command &lt;code&gt;adb shell pm path &amp;lt;package name&amp;gt;&lt;/code&gt;, then I use &lt;code&gt;adb pull &amp;lt;path&amp;gt;&lt;/code&gt; to extract the APK to my local machine.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%205.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;The first thing I like to do is use a set of tools to assist in the process of finding vulnerabilities in the target application. The ones I use the most are:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;apkleaks&lt;/strong&gt;: This tool returns various information about the APK, including possible hardcoded secrets, links, strings, and other elements.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Apepe&lt;/strong&gt;: A project of mine that lists various interesting details, such as all activities (including the app&amp;rsquo;s main activity), requested permissions, utilized libraries, and a list of services it uses or consumes. It also attempts to guess the app&amp;rsquo;s programming language based on the extracted content, though it&amp;rsquo;s not very precise.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;I was happy to use my project on this target app because it helped me identify a bug in the tool, which I was fortunately able to fix easily. The issue was with retrieving the &lt;code&gt;app_name&lt;/code&gt; from the Androguard library.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%206.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%207.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;With all this data collected, I proceed to use Jadx to read the application&amp;rsquo;s source code and begin identifying vulnerabilities. I examine key files, such as the &lt;code&gt;AndroidManifest.xml&lt;/code&gt;, to look for intents, content providers, and so on. However, skipping over this step for now, I like to search for &lt;code&gt;onResume()&lt;/code&gt; functions to examine the main initializers of the application. This revealed something very important:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%208.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;As we can see, there are functions in the app that check if the device is rooted, if it is running in a development or staging environment, and if it is an emulator.&lt;/p&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;im-not-fake-please-let-me-in&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#im-not-fake-please-let-me-in&#34;&gt;
+        ##
+    &lt;/a&gt;
+    I’m not fake, please let me in!
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;Let’s start with the &lt;code&gt;isDeviceRooted()&lt;/code&gt; function, which is declared in a class called &lt;code&gt;RootUtil&lt;/code&gt;. Within the same class, there are three functions that check whether the device is rooted in different ways. The first one is &lt;code&gt;checkRootMethod1&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%209.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;The first check captures the value of the &lt;code&gt;TAGS&lt;/code&gt; property from &lt;code&gt;android.os.Build&lt;/code&gt; and verifies if its value is &lt;code&gt;test-keys&lt;/code&gt;. Another relevant point is that it’s a boolean function, so the final result will simply be &lt;code&gt;true&lt;/code&gt; or &lt;code&gt;false&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;The function &lt;code&gt;checkRootMethod2&lt;/code&gt; creates an array with the standard paths of several SUID binaries and checks if the file exists using the &lt;code&gt;java.io.File&lt;/code&gt; API and the &lt;code&gt;exists()&lt;/code&gt; function. It’s worth noting that this is also a boolean function.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2010.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;The last function, &lt;code&gt;checkRootMethod3&lt;/code&gt;, executes the &lt;code&gt;which&lt;/code&gt; command located at &lt;code&gt;/system/xbin/which&lt;/code&gt; to check for any result pointing to the &lt;code&gt;su&lt;/code&gt; binary by reading its output.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2011.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Since all these checks are in the &lt;code&gt;RootUtil&lt;/code&gt; class, we can create a JavaScript script and use Frida to intercept these calls and return the value &lt;code&gt;false&lt;/code&gt; for each of these functions. This way, the app will always get a response like, “No, the device is not rooted.”&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2012.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;First, we define the class and then interact with each function, passing their names directly through the variable &lt;code&gt;rootUtils&lt;/code&gt; that we previously defined. In the end, the key part for each item is simply the &lt;code&gt;return false&lt;/code&gt;. It’s also a good idea to alter the &lt;code&gt;TAGS&lt;/code&gt; property as a precaution, which can be done using the &lt;code&gt;defineProperty&lt;/code&gt; function.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2013.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Now we just need to launch the app on our emulator using Frida, specifying its path with the &lt;code&gt;-f&lt;/code&gt; argument and the JavaScript script we created earlier with the &lt;code&gt;-l&lt;/code&gt; argument (don’t forget to start your Frida server).&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2014.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Strangely, we didn’t see any calls to the &lt;code&gt;checkRootMethod&lt;/code&gt; functions, and the app already detected that we’re on an emulator. What’s my idea now? Bypass all protections at once and hope for the best xD. Currently, we have a possible bypass for the root check, so let’s apply the same process to the &lt;code&gt;isEmulator&lt;/code&gt; and &lt;code&gt;isDevOrHMLEnvironment&lt;/code&gt; functions.&lt;/p&gt;
+&lt;p&gt;Using Jadx, I searched for the definition of the word &lt;code&gt;isEmulator()&lt;/code&gt; and found something interesting. As shown in the image below, the &lt;code&gt;isEmulator()&lt;/code&gt; function is defined in both &lt;code&gt;DeviceUtils.isEmulator()&lt;/code&gt; and &lt;code&gt;DeviceUtils.Companion.isEmulator()&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2015.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Again, these are boolean functions, so we’ll just return &lt;code&gt;false&lt;/code&gt; for both and analyze how the application behaves now. The code looks like this:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2016.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;With this, we’ll call our script again via Frida and observe how the application interacts now.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2017.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Now, the app no longer immediately detects us as being on an emulator. However, we still have an issue: after a short time, a notification appears at the bottom of the app indicating that something malicious has been detected on our device, and the app will shut down.&lt;/p&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;fighting-invisible-demons&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#fighting-invisible-demons&#34;&gt;
+        ##
+    &lt;/a&gt;
+    Fighting invisible demons
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;What are they detecting now? We&amp;rsquo;ve already bypassed the checks for root, emulator, and development/staging environments, so what&amp;rsquo;s left?&lt;/p&gt;
+&lt;p&gt;My first idea was to monitor calls to other system properties, which is done through the &lt;code&gt;System.getProperty&lt;/code&gt; function. So, let’s implement a function in our script to tell us what is being called and the values being sent.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2018.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Note that I’m using the &lt;code&gt;overload&lt;/code&gt; function because the &lt;code&gt;System.getProperty&lt;/code&gt; method will likely be called multiple times with different parameters and so on.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2019.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;As we can see, several properties are being called, and some of them have unexpected values. One very important one is &lt;code&gt;http.agent&lt;/code&gt;, which clearly indicates it’s an emulator. Therefore, we’ll modify the return value for these properties.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2020.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Even with all this configured, the app still closes. So, the issue doesn’t seem to be limited to property calls—there must be something else. Then, I got the idea to enumerate JSON objects, thinking that this information might be stored or sent to a server. I added the following code to my script:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2021.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Running the app again with Frida and our script, the result is as follows:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2022.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;The app&amp;rsquo;s defense mechanism is detecting the presence of Magisk. The other reasons are likely also due to Magisk. In the censored section, the name of the solution protecting the app is displayed. So, now we need to bypass this solution!&lt;/p&gt;
+&lt;p&gt;Magisk offers a module in its settings to change the package name. Let’s change it to something considered &amp;ldquo;legitimate&amp;rdquo; xD. I chose &amp;ldquo;SpotifyManager,&amp;rdquo; but any other name will work too.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2023.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;After this, Magisk will make the necessary changes, and we’ll need to confirm a few other things, though it’s unnecessary to detail them here. If we go back to our terminal and run the script again, we’ll see a surprise!&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2024.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Magisk is no longer being detected by the package name, leaving only the options &amp;ldquo;Superuser exists&amp;rdquo; and &amp;ldquo;Superuser system app installed.&amp;rdquo;&lt;/p&gt;
+&lt;p&gt;To resolve this, it’s quite simple: we just need to install the &amp;ldquo;Shamiko&amp;rdquo; and &amp;ldquo;LSPosed&amp;rdquo; modules in Magisk, and everything will work fine. These modules can successfully evade detection.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Shamiko&lt;/strong&gt; is a module for Zygisk that hides the root process of Magisk, the Zygisk itself, and its modules, ensuring that protections cannot detect them through conventional means. For context, Zygisk is a Magisk module that allows us to run code in applications.&lt;/p&gt;
+&lt;p&gt;To install Shamiko, go to its creator’s GitHub page and download the zip file available in the GitHub Releases section.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2025.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;After downloading the zip file, move it to your sdcard with the command &lt;code&gt;adb push &amp;lt;file&amp;gt; /sdcard&lt;/code&gt; and install it in Magisk. After installation, the &amp;ldquo;Restart&amp;rdquo; button will be available. Click it and wait for the AVD to reboot.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2026.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2027.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Once Shamiko is installed, let’s install &lt;strong&gt;LSPosed&lt;/strong&gt;. LSPosed is a solution that allows us to modify the behavior of our Android device and system components in real-time. It’s available in another repository by the same creator. Download the zip, move it to your sdcard, and install it again. After installation, restart the emulator again.&lt;/p&gt;
+&lt;p&gt;With both installed, go to the Magisk settings and enable the &amp;ldquo;Enforce DenyList&amp;rdquo; option. I recommend restarting the emulator once more just to be sure. Then, navigate to the &amp;ldquo;Configure DenyList&amp;rdquo; option.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2028.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Now, find the target app and check its checkbox. This will enable the DenyList for the app we want.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2029.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;With that done, if we run our previous script again, we can see that the &lt;code&gt;reasonData&lt;/code&gt; no longer contains Sudo/Superuser information, but it still detects the environment as an emulator.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2030.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;Now that we’ve hidden the root mode, let’s move on to the final step: figuring out how to convince the protection mechanism that we’re not an emulator.&lt;/p&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;the-final-fight&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#the-final-fight&#34;&gt;
+        ##
+    &lt;/a&gt;
+    The final fight
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;For quite some time, and with the help of some friends, we tried various ways to bypass the emulator detection—ranging from altering system properties to simulate a real device, to hooking some functions to understand what was actually happening behind the scenes. Unfortunately, we didn’t succeed until now.&lt;/p&gt;
+&lt;p&gt;The solution was to combine all the procedures we performed, the Frida script we developed, and a real device. In this case, I’d like to thank my friend &lt;a href=&#34;https://github.com/thalysonz&#34;&gt;thalysonz&lt;/a&gt; who conducted this test for me, as I don’t have a real Android device to test on. The result was that we could now run the application without being detected for the previously mentioned reasons, allowing us to proceed with any other tests we wanted to perform.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//localhost:1313/images/bypassing-protections-of-a-banking-app-just-to-learn/image%2031.png&#34; alt=&#34;image.png&#34;&gt;&lt;/p&gt;
+&lt;p&gt;If, in the near future, we discover a way to bypass this emulator detection, I’ll update this article with the solution that made it possible.&lt;/p&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;conclusion&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#conclusion&#34;&gt;
+        ##
+    &lt;/a&gt;
+    Conclusion
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;In the end, it was an incredibly educational process. Since I don’t have much experience with mobile pentesting, dealing directly with a banking application that has several protections—though perhaps not as many as other banks—offered a real challenge throughout this process.&lt;/p&gt;
+&lt;p&gt;I hope you were able to learn something from this article or that it served as inspiration for you to continue your studies. Thank you very much!&lt;/p&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;references&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#references&#34;&gt;
+        ##
+    &lt;/a&gt;
+    References
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/dwisiswant0/apkleaks&#34;&gt;https://github.com/dwisiswant0/apkleaks&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/oppsec/Apepe&#34;&gt;https://github.com/oppsec/Apepe&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://gitlab.com/newbit/rootAVD&#34;&gt;https://gitlab.com/newbit/rootAVD&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/topjohnwu/Magisk&#34;&gt;https://github.com/topjohnwu/Magisk&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://8ksec.io/advanced-frida-mobile/&#34;&gt;https://8ksec.io/advanced-frida-mobile/&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://labs.cognisys.group/posts/Writing-your-first-Frida-script-for-Android/&#34;&gt;https://labs.cognisys.group/posts/Writing-your-first-Frida-script-for-Android/&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/skylot/jadx&#34;&gt;https://github.com/skylot/jadx&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/LSPosed/LSPosed&#34;&gt;https://github.com/LSPosed/LSPosed&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Discovering a 0-day Authenticated RCE on my router</title>
+      <link>/posts/discovering-0-day-authenticated-rce-on-my-router/</link>
+      <pubDate>Fri, 10 Jan 2025 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/discovering-0-day-authenticated-rce-on-my-router/</guid>
+      <description>&lt;p&gt;Everything started when I watched a talk by Maycon Vitali at H2HC titled “Internet of Sh!t - Maycon Vitali - H2HC University 2018,” where he discussed his process of discovering vulnerabilities in a Ubiquiti router. After watching the 30-minute talk, I stopped the video, looked around, and remembered an old router I used to have and still had in my house.&lt;/p&gt;
+&lt;p&gt;I immediately searched for the power cable, plugged it in next to my desk, and checked if everything worked fine. After about 5 minutes, I scanned my network and found the router&amp;rsquo;s IP address. I made some changes and set the IP to &lt;code&gt;192.168.15.1&lt;/code&gt;. With everything set up, I ran &lt;code&gt;nmap&lt;/code&gt; to check the available ports and running services.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image.png&#34;&gt;
+&lt;p&gt;When I saw the SSH port, I looked behind the router for any credentials and, fortunately, it had them. I tried logging in with the “admin” username, but it didn’t work, so I searched for some documentation and discovered the correct username was “support.”&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 1.png&#34;&gt;
+&lt;p&gt;As shown in the image above, we couldn’t execute commands or interact with the operating system beyond the initial shell. The initial goal was to figure out how to execute commands, as I had no prior experience with hardware hacking and didn’t want to attempt extracting the firmware without understanding how to do it.&lt;/p&gt;
+&lt;p&gt;After a bit of research, I discovered that you could pass a direct command after the SSH command to escape the “dumb shell” we encountered when connecting.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 2.png&#34;&gt;
+&lt;p&gt;Using the &lt;code&gt;netstat&lt;/code&gt; command, I checked all running ports and services. The idea here is to find some binary or service we can exploit to discover a vulnerability, but we don&amp;rsquo;t investigate it too deeply and move on to other enumerations.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 3.png&#34;&gt;
+&lt;p&gt;Through the &lt;code&gt;uname -a&lt;/code&gt; command, I identified the version of the running Linux system. As you can see, it’s a fairly up-to-date kernel, and the environment is somewhat limited, so we also chose not to delve too deeply into its exploitation because, above all, our user is already part of the root group.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;Linux (none) 4.4.115 #1 SMP Fri Jul 5 16:58:21 CST 2024 armv7l GNU/Linux
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Using &lt;code&gt;ps w&lt;/code&gt;, I also found a bunch of interesting information. There are several processes using some config files, including some XMLs that contain virtually all the router&amp;rsquo;s configurations, but we also didn&amp;rsquo;t find anything of significant relevance.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 4.png&#34;&gt;
+&lt;p&gt;After experimenting with the router, I discovered some issues:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;My friends and I tried different methods to get a reverse shell, but without success.&lt;/li&gt;
+&lt;li&gt;Some common binaries, like &lt;code&gt;ls&lt;/code&gt;, didn’t work.&lt;/li&gt;
+&lt;li&gt;The entire router was running on a read-only system, so we couldn’t create a web shell in the web app’s directory.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Not having &lt;code&gt;ls&lt;/code&gt; wasn’t a problem because we still had the &lt;code&gt;find&lt;/code&gt; binary. For example:&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 5.png&#34;&gt;
+&lt;p&gt;When I listed the files in the &lt;code&gt;/tmp&lt;/code&gt; directory, I found a file called &lt;code&gt;dump.txt&lt;/code&gt; that caught my attention. Reading this file, I discovered it stored network passwords in plaintext, along with other network configurations, which is indeed quite useful if you want to access the Wi-Fi network without changing it, which I think is the best option. The contents of the file were something like this:&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 6.png&#34;&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 7.png&#34;&gt;
+&lt;p&gt;Ok, I don&amp;rsquo;t think this is the biggest problem we have xD, but it&amp;rsquo;s still funny to see the level of security here. Let&amp;rsquo;s continue&amp;hellip;&lt;/p&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;escalating-from-cmdsh&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#escalating-from-cmdsh&#34;&gt;
+        ##
+    &lt;/a&gt;
+    Escalating from cmdsh
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;Analyzing the processes, I discovered that the initial shell we got when accessing via SSH was called “cmdsh” and appeared to be a unique binary used to manage the SSH service. I copied the “cmdsh” binary to my local machine and opened it in Binary Ninja to understand what was happening in the background.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 8.png&#34;&gt;
+&lt;p&gt;We can see that the binary looks for two variables called “LOGNAME” and “LOGFROM.” Digging further into the code, we identified the expected values for these variables&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 9.png&#34;&gt;
+&lt;p&gt;The most interesting part of this code, in my opinion, is the lines:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;current_hidden&lt;/code&gt; and &lt;code&gt;current_permission&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Why is this interesting? Because we can see the difference in permissions available when logged in with an “admin” or “telefonica” profile. So, before running the command &lt;code&gt;/bin/cmdsh&lt;/code&gt;, we specify the values &lt;code&gt;LOGNAME=telefonica&lt;/code&gt;, for example, and now the commands become available to us. =)&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 10.png&#34;&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;attacking-the-web-app&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#attacking-the-web-app&#34;&gt;
+        ##
+    &lt;/a&gt;
+    Attacking the Web App
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;I wasn’t successful with &lt;code&gt;cURL&lt;/code&gt;, &lt;code&gt;wget&lt;/code&gt;, or &lt;code&gt;SCP&lt;/code&gt;. So, I decided to create a tar file, convert it to base64, and save the output locally. After this, I converted it back into a normal file and successfully retrieved the content. I created the tar file from the directory &lt;code&gt;/usr/shared/web&lt;/code&gt;. Opening it in VSCode revealed the following:&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 11.png&#34;&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 12.png&#34;&gt;
+&lt;p&gt;In the end, we have a &amp;ldquo;valid&amp;rdquo; code that we can open in VSCode to better understand the application&amp;rsquo;s structure, but not everything is as smooth as we imagined. This is an issue I didn&amp;rsquo;t consider at the time I was exporting it to VSCode.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 13.png&#34;&gt;
+&lt;p&gt;Of course, we couldn’t read the CGI files directly because they are compiled C files that generate a web interface (I think xD). I started exploring the available functions in the web app and found a menu called “Tools.” Accessing it, we saw options to run commands like Ping, Traceroute, and Nslookup.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 14.png&#34;&gt;
+&lt;p&gt;This immediately caught my attention. I tried injecting direct commands into it, but there was a JavaScript validation that checked for valid IPs. However, we could bypass this by capturing a valid request in Burp Suite and modifying the IP parameter.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 15.png&#34;&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 16.png&#34;&gt;
+&lt;p&gt;As we observed, there was some form of protection against command injection. By examining the code, we could understand how the function worked and look for ways to bypass or understand what was happening in the background.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 17.png&#34;&gt;
+&lt;p&gt;Looking at the final lines of the code, where the &lt;code&gt;nslookup&lt;/code&gt; binary runs, we noticed that our input was directly concatenated into the execution. This confirmed that there was command injection. Another interesting detail was that the output was saved to the file &lt;code&gt;/tmp/ping_result&lt;/code&gt;. To confirm if our commands were being executed, we needed to read this file.&lt;/p&gt;
+&lt;p&gt;Returning to the web app, we kept trying to execute commands without immediate success. After a break, we discovered that the &lt;code&gt;&amp;amp;&lt;/code&gt; character wasn’t blocked. For now, we could encode the &lt;code&gt;&amp;amp;&lt;/code&gt; character with URL encoding and attempt to execute commands like this:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;127.0.0.1%26%26id
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 18.png&#34;&gt;
+&lt;p&gt;We received a blank response because the output was rendered in another file. We just needed to send the request and then read the content of the &lt;code&gt;ping_result&lt;/code&gt; file.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 19.png&#34;&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 20.png&#34;&gt;
+&lt;p&gt;Finally, we achieved command execution. The issue here was that it was a Blind Authenticated RCE because the output was saved in &lt;code&gt;/tmp/ping_result&lt;/code&gt;, and we couldn’t read this file outside SSH. The web app didn’t render the command output directly.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 21.png&#34;&gt;
+&lt;p&gt;If we look at the output of our command now, we’ll be surprised by something quite unfortunate, but something we managed to solve later, which was rather &amp;ldquo;funny&amp;rdquo; given the ideas we came up with during this process.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 22.png&#34;&gt;
+&lt;p&gt;But this wasn’t a dead end for us! Here’s what we discovered:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;The function that printed the command output removed some lines from the final result, so we couldn’t see the output without reading &lt;code&gt;ping_result&lt;/code&gt; from the &lt;code&gt;/tmp&lt;/code&gt; directory.&lt;/li&gt;
+&lt;li&gt;There was a slight delay between command execution and when the output was saved, so we needed to wait about 5 seconds before checking the output.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;To work around this, we needed to concatenate three commands. Why? By using two &lt;code&gt;nslookup&lt;/code&gt; commands, we ensured our command’s output wasn’t the last line removed by the application. =)&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 23.png&#34;&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;127.0.0.1%26%26uname%20-a%26%26nslookup%20127.0.0.1
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 24.png&#34;&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;automating-the-process&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#automating-the-process&#34;&gt;
+        ##
+    &lt;/a&gt;
+    Automating the Process
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;Looking at the login process, we noticed the parameter &lt;code&gt;loginPassword&lt;/code&gt; didn’t send the password in plaintext. Instead, it sent an MD5 hash of the password. After logging in, a &lt;code&gt;COOKIE_SESSION_KEY&lt;/code&gt; was generated, which indicates that our session is valid and we are authenticated in the environment.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 25.png&#34;&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 26.png&#34;&gt;
+&lt;p&gt;Logging in again showed that the &lt;code&gt;loginPassword&lt;/code&gt; value was different from the first login. Apparently, there is a function in the system that ensures the password hash doesn&amp;rsquo;t repeat, which I believe is meant to prevent brute force attacks and similar methods.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 27.png&#34;&gt;
+&lt;p&gt;Inspecting the &lt;code&gt;login.cgi&lt;/code&gt; HTML source code, we found the JavaScript function that generated the MD5 hash, the function in question is called &amp;ldquo;checkLogin,&amp;rdquo; and it seems to mix the SID value, the original password (in plain text), and finally convert everything to MD5.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 28.png&#34;&gt;
+&lt;p&gt;Refreshing the page showed that the &lt;code&gt;sid&lt;/code&gt; value changed each time, this indicates that every time we access the login page, the SID will be changed, something like dynamic generation, so it&amp;rsquo;s not possible to simply convert our password to MD5 and send it directly to the login form.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 29.png&#34;&gt;
+&lt;p&gt;Our Python script needed to capture the &lt;code&gt;var sid&lt;/code&gt; value, concatenate it with the password, and generate the MD5 hash. Using BeautifulSoup, we captured the &lt;code&gt;var sid&lt;/code&gt; value after the &lt;code&gt;=&lt;/code&gt; character with the following code:&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 30.png&#34;&gt;
+&lt;p&gt;This is already enough for us to generate a valid hash when submitting it to the login form after updating the code. We executed the script and checked the response:&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 31.png&#34;&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 32.png&#34;&gt;
+&lt;p&gt;Now, with a valid &lt;code&gt;COOKIE_SESSION_KEY&lt;/code&gt;, we could perform authenticated actions on the router. The final step was to replicate the process and integrate it into the script.The final result of our script will be an RCE with direct output, which made exploiting the vulnerability ten times better.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 33.png&#34;&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;conclusion&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#conclusion&#34;&gt;
+        ##
+    &lt;/a&gt;
+    Conclusion
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;During this process, my friends and I realized that the most ridiculous ideas can work, like concatenating three commands and hoping for the best hahahaha xD. But honestly, it’s interesting how watching an H2HC talk sparked this desire in me to explore something I had such easy access to, and in the end, everything worked out. Obviously, all of this was possible thanks to the help of the other members of Inferi, who were exceptional in helping me brainstorm some ideas.&lt;/p&gt;
+&lt;br&gt;
+&lt;p&gt;It’s funny that I have no experience with reverse engineering, but a little bit of guesswork and determination seems to solve everything. Of course, if I had some experience, it would have helped a lot, but that’s something for the future.&lt;/p&gt;
+&lt;br&gt;
+&lt;p&gt;Thank you for reading this far! I hope you’ve learned something or at least enjoyed the content. Neither the script nor the vulnerability will be made available since this was just field research. But who knows? Maybe this will turn into a CVE in the future, and we’ll change our minds about publishing it.&lt;/p&gt;
+&lt;br&gt;
+&lt;h3 id=&#34;references&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#references&#34;&gt;
+        ##
+    &lt;/a&gt;
+    References
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.youtube.com/watch?v=4_UI9zBLJp0&#34;&gt;https://www.youtube.com/watch?v=4_UI9zBLJp0&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
     
     <item>
       <title>Attacking Azure Blob Storage Services</title>
@@ -25,15 +498,7 @@
       <pubDate>Fri, 22 Nov 2024 00:00:00 +0000</pubDate>
       
       <guid>/posts/attacking-azure-blob-storage-service/</guid>
-      <description>&lt;h2 id=&#34;what-is-azure-and-blob&#34; &gt;
-&lt;div&gt;
-    &lt;a href=&#34;#what-is-azure-and-blob&#34;&gt;
-        #
-    &lt;/a&gt;
-    What is Azure and Blob?
-&lt;/div&gt;
-&lt;/h2&gt;
-&lt;p&gt;Azure, or Microsoft Azure, is a cloud computing platform maintained by Microsoft that offers a bunch of services used by many companies and individuals. Probably, the most famous solutions provided by Microsoft Azure are virtual machines, Azure Kubernetes Services (AKS), solutions for DevOps and DevSecOps, and of course, the giant integration with all other Microsoft services, for example, Active Directory, GitHub, Azure DevOps, Visual Studio, and GitHub Copilot.&lt;/p&gt;
+      <description>&lt;p&gt;Azure, or Microsoft Azure, is a cloud computing platform maintained by Microsoft that offers a bunch of services used by many companies and individuals. Probably, the most famous solutions provided by Microsoft Azure are virtual machines, Azure Kubernetes Services (AKS), solutions for DevOps and DevSecOps, and of course, the giant integration with all other Microsoft services, for example, Active Directory, GitHub, Azure DevOps, Visual Studio, and GitHub Copilot.&lt;/p&gt;
 &lt;p&gt;Now, what is Azure Blob Storage? Azure Blob Storage is a massively scalable and &lt;del&gt;secure&lt;/del&gt; object storage solution for cloud-native workloads, archives, data lakes, HPC, and machine learning (I took this from the Microsoft Azure Blob Storage website). Basically, a lot of companies store their files like videos, documents, executables, logs, backup data, and others in this service and share these resources through their services like web apps, systems, etc.&lt;/p&gt;
 &lt;p&gt;A Blob Storage is constructed of three types of resources, which are:&lt;/p&gt;
 &lt;ul&gt;
@@ -155,6 +620,149 @@ Try using FFUF with a custom wordlist that combines the company name and a gener
 &lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/rest/api/storageservices/enumerating-blob-resources&#34;&gt;https://learn.microsoft.com/en-us/rest/api/storageservices/enumerating-blob-resources&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/rest/api/storageservices/operations-on-containers&#34;&gt;https://learn.microsoft.com/en-us/rest/api/storageservices/operations-on-containers&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Security Descriptor, o que é e onde vive.</title>
+      <link>/posts/security-descriptor/</link>
+      <pubDate>Thu, 24 Oct 2024 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/security-descriptor/</guid>
+      <description>&lt;p&gt;O Security Descriptor ou ntSecurityDescriptor, é um atributo de segurança do Windows que contém uma estrutura de dados representativa das permissões e propriedades daquele objeto em questão. Podemos interpretar o mesmo como uma ideia do escopo de permissões do X sobre Y. O ntSecurityDescriptor está presente desde as versões superiores do Windows Server 2000 e se manteve o mesmo desde então.&lt;/p&gt;
+&lt;p&gt;O Security Descriptor é um representação compactada binária da segurança associada a objeto pertecente ao ambiente. Para comprovação disso, podemos tentar extrair o Security Descriptor de um usuário ou grupo por meio de uma query LDAP e vermos seu formato puro.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/security-descriptor/image1.jpg&#34;&gt;
+&lt;p&gt;É importante salientar que o ntSecurityDescriptor é utilizado por DACLs, SACLs, e ACL. Esses três atributos são responsáveis por representar as permissões desse objeto consumindo os dados do ntSecurityDescriptor. Essas permissões são de quem representa aquele objeto, quem pode acessar esse objeto e o que pode fazer com o mesmo, informações de auditoria do objeto e restrições sobre tal.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;ACL&lt;/strong&gt;: &lt;em&gt;Access Control List&lt;/em&gt; é uma lista de proteções de seguranças que são aplicadas sobre um objeto. Deve-se entender que objetos podem ser um arquivo, processo, evento, ou tudo aquilo que também tiver um “Security Descriptor”;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;ACE&lt;/strong&gt;: &lt;em&gt;Access Control Entries&lt;/em&gt; são entrada de dados de ACLs (Access Control List). Uma ACE contém uma lista de permissões sobre um SID que irá identificar se tais permissões participam dos escopos: Allowed, Denied ou Audited;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;DACL&lt;/strong&gt;: &lt;em&gt;Discretionary Access Control List&lt;/em&gt; é o responsável por identificar os administradores ou objetos que tem permissões ou não sobre objetos protegidos. Caso um processo tente interagir com um objeto protegido, o sistema irá requisitar ao que ACE busque na DACL se aquele autor em questão tem as permissões necessárias;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;SACL&lt;/strong&gt;: &lt;em&gt;System Access Control List&lt;/em&gt; é uma lista que permite que adminstradores registrem tentativas de interação ou acesso a um objeto protegido. Cada ACE irá especificar as tentativas de acesso sobre aquele item e fará com que o sistema armazene essa tentativa no Security Event Log;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;img src=&#34;//localhost:1313/images/security-descriptor/image2.jpg&#34;&gt;
+&lt;p&gt;De acordo com a Microsoft, o ntSecurityDescriptor utiliza de um sistema chamado &lt;em&gt;Security Descriptor String Format&lt;/em&gt;. O &lt;em&gt;Security Descriptor String Format&lt;/em&gt; é um formato ou sistema de texto responsável por armazenar ou transportar a informação do ntSecurityDescriptor. Isso é feito por duas funções chamadas &lt;strong&gt;ConvertSecurityDescriptorToStringSecurityDescriptorA&lt;/strong&gt; e &lt;strong&gt;ConvertStringSecurityDescriptorToSecurityDescriptorA&lt;/strong&gt;. Essas duas funções são utilizadas para o trabalho de conversão dos Security Descriptor.&lt;/p&gt;
+&lt;p&gt;É possível transformar um &lt;em&gt;“String Security Descriptor&lt;/em&gt;“ para um &lt;em&gt;Security Descriptor Absoluto&lt;/em&gt; através de outra função que é chamada de &lt;strong&gt;MakeAbsoluteSD&lt;/strong&gt;. Essas três funções iram retornar valores não nulos, caso todos os argumentos necessários forem repassados e serem válidos. Com o seu retorno, é possível extrair o formato do Security Descriptor.&lt;/p&gt;
+&lt;p&gt;Para que as funções citadas acima possam descrever o formato do Security Descriptor, é utilizado a tecnologia SDDL (Security Descriptor Definition Language) que irá fazer essa tradução e permitir que as funções possam representar elas em texto. Aqui estão alguns exemplos de SDDL retirados do artigo da Microsoft:&lt;/p&gt;
+&lt;h3 id=&#34;exemplos&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#exemplos&#34;&gt;
+        ##
+    &lt;/a&gt;
+    Exemplos
+&lt;/div&gt;
+&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;Regra&lt;/strong&gt;: Qualquer usuário poderá executar esse objeto se ele seguir as seguintes condições:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;O título dele ser PM&lt;/li&gt;
+&lt;li&gt;A divisão ou setor dele for Financeiro ou Vendas&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;d:(XA; ;FX;;;S-1-1-0; (@User.Title==&amp;#34;PM&amp;#34; &amp;amp;&amp;amp; (@User.Division==&amp;#34;Financeiro&amp;#34; || @User.Division ==&amp;#34;Vendas&amp;#34;)))
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;Regra 2&lt;/strong&gt;: Permite leitura do objeto se o usuário seguir as seguintes condições:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Seu login ter sido feito a partir de um Smart Card&lt;/li&gt;
+&lt;li&gt;É pertencente do grupo Backup Operator&lt;/li&gt;
+&lt;li&gt;Está conectado em uma máquina com o BitLocker ativo&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;D:(XA; ;FR;;;S-1-1-0; (Member_of {SID(Smartcard_SID), SID(BO)} &amp;amp;&amp;amp;@Device.Bitlocker))
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;qual-a-sua-importância&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#qual-a-sua-import%c3%a2ncia&#34;&gt;
+        #
+    &lt;/a&gt;
+    Qual a sua importância?
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;Através do Security Descriptor, pode-se compreender qual o escopo de privilégios que aquele ativo terá sobre um item de seu interesse ou que haverá uma possível interação. Com isso em mente, a Microsoft desenvolveu esse atributo expressivo para que fosse alocado sobre os objetos do ambiente Active Directory e pudesse trabalhar as questões de controle de acesso. Atualmente, ele é utilizado por outras classes do ambiente Active Directory como:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;samDomainBase: A classe base para a definição de domínios;&lt;/li&gt;
+&lt;li&gt;securityPrincipal: Armazena informações de segura sobre um objeto;&lt;/li&gt;
+&lt;li&gt;top: A classe de mais alto nível que é de onde todas as classes derivam;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Hoje em dia, ferramentas como o &lt;strong&gt;BloodHound&lt;/strong&gt; usufruem de ACEs e DACLs para identificar as permissões que um objeto tem sobre o outro, e assim, poder construir caminhos de exploração por meio de fragilidades do objeto X sobre o objeto Y.&lt;/p&gt;
+&lt;h2 id=&#34;trabalhando-com-o-ntsecuritydescriptor&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#trabalhando-com-o-ntsecuritydescriptor&#34;&gt;
+        #
+    &lt;/a&gt;
+    Trabalhando com o ntSecurityDescriptor
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;O ntSecurityDescriptor segue o seguinte formato &lt;code&gt;O:BAG:BAD:S:&lt;/code&gt;, onde:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;O: Owner&lt;/li&gt;
+&lt;li&gt;BAG e BAD serão utilizados para representar quem tem permissão de interação e quem não tem sobre aquele objeto. G é Granted e D é Deny.&lt;/li&gt;
+&lt;li&gt;S representará o SACL.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;O atributo Owner irá indicar o proprietário por meio do SID do objeto, o BAG e o BAD são especificadores de controle de acesso e o SACL para poder armazenar as tentativas de interação com o objeto alvo. De uma maneira simples, se expandíssemos um Security Descriptor, esse seria o formato dele:&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/security-descriptor/image3.jpg&#34;&gt;
+&lt;p&gt;Como podemos ver, o Owner e PrimaryGroup são as representações do proprietário daquele Security Descriptor. Com isso, podemos partir para a leitura da DACL que trará informações sobre a ACE do objeto protegido. Em um contexto de segurança ofensiva, o que diretamente nos importa seria o Access Mask dessa ACE.&lt;/p&gt;
+&lt;p&gt;Com isso em mente, podemos capturar o Security Descriptor de objetos (usuários, grupos, etc) e lermos suas permissões e identificar possíveis fragilidades que atacantes podem utilizar para escalonar privilégios dentro de um ambiente Active Directory. Para isso, incrementei um módulo na minha ferramenta &lt;a href=&#34;https://github.com/oppsec/breads&#34;&gt;breads&lt;/a&gt; que irá buscar pelo valor do ntSecurityDescriptor de todos os objetos do ambiente através da query &lt;code&gt;objectClass=(*)&lt;/code&gt; e checar as permissões se baseando no valor de ACE_MASK. Esses valores são hexadecimais que quando calculados, podem ser lidos como bits representantes de permissão. Essa é a tabela de permissões:&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/security-descriptor/image4.jpg&#34;&gt;
+&lt;p&gt;Esse é o pedaço do código da minha ferramenta que irá realizar essa busca. O &lt;code&gt;object_ntsd&lt;/code&gt; representa o acesso ao atributo ntSecurityDescriptor daquele objeto; já a variável &lt;code&gt;sd&lt;/code&gt; está utilizando de uma classe do projeto &lt;a href=&#34;https://github.com/fortra/impacket&#34;&gt;Impacket&lt;/a&gt; para realizar a leitura dos bytes do Security Descriptor. Por fim, percorremos pelas chaves retornada da variável &lt;code&gt;sd&lt;/code&gt; e acessamos seus valores respectivamente.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#737994;font-style:italic&#34;&gt;# ...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;object_ntsd &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; attribute[&lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#34;attributes&amp;#34;&lt;/span&gt;][&lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#34;nTSecurityDescriptor&amp;#34;&lt;/span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;sd &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; SR_SECURITY_DESCRIPTOR(data&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt;object_ntsd)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ca9ee6&#34;&gt;if&lt;/span&gt; sd[&lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#34;Dacl&amp;#34;&lt;/span&gt;]:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#ca9ee6&#34;&gt;for&lt;/span&gt; ace &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;in&lt;/span&gt; sd[&lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#34;Dacl&amp;#34;&lt;/span&gt;]&lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;.&lt;/span&gt;aces:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;		ace_object &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; ace[&lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#34;Ace&amp;#34;&lt;/span&gt;]  &lt;span style=&#34;color:#737994;font-style:italic&#34;&gt;# Ace_Object Vars: Mask, Sid&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    ace_mask &lt;span style=&#34;color:#99d1db;font-weight:bold&#34;&gt;=&lt;/span&gt; ace_object[&lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#34;Mask&amp;#34;&lt;/span&gt;][&lt;span style=&#34;color:#a6d189&#34;&gt;&amp;#34;Mask&amp;#34;&lt;/span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Após um tratamento sobre os hexadecimais retornados e quais são suas representações com base na documentação da Microsoft, podemos esperar um resultado como esse abaixo. Ressalto que foi utilizado uma conta participante do grupo de Domain Admins.&lt;/p&gt;
+&lt;img src=&#34;//localhost:1313/images/security-descriptor/image5.jpg&#34;&gt;
+&lt;h2 id=&#34;conclusão&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#conclus%c3%a3o&#34;&gt;
+        #
+    &lt;/a&gt;
+    Conclusão
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;p&gt;Assim, podemos compreender a relevância do ntSecurityDescriptor no Active Directory e como podemos utilizar dele para encontrar meios para realizar uma escalação de privilégios por meio de objetos presentes no ambiente.  Como citado anteriormente, a ferramenta BloodHound faz um ótimo trabalhando usufruindo desse atributo para construir caminhos e gráficos com base nas informações coletadas do ambiente. Entende-se que tudo isso é principalmente útil para atacantes, todavia, esse tipo de processo também é de grande utilidade também para os times de operações defensivas, visto que poderão encontrar fragilidades na arquitetura monitorada.&lt;/p&gt;
+&lt;h2 id=&#34;referências&#34; &gt;
+&lt;div&gt;
+    &lt;a href=&#34;#refer%c3%aancias&#34;&gt;
+        #
+    &lt;/a&gt;
+    Referências
+&lt;/div&gt;
+&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/windows/win32/adschema/a-ntsecuritydescriptor&#34;&gt;https://learn.microsoft.com/en-us/windows/win32/adschema/a-ntsecuritydescriptor&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/windows/win32/adschema/c-samdomainbase&#34;&gt;https://learn.microsoft.com/en-us/windows/win32/adschema/c-samdomainbase&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/windows/win32/adschema/c-top&#34;&gt;https://learn.microsoft.com/en-us/windows/win32/adschema/c-top&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-string-format?redirectedfrom=MSDN&#34;&gt;https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-string-format?redirectedfrom=MSDN&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/windows/win32/secgloss/a-gly&#34;&gt;https://learn.microsoft.com/en-us/windows/win32/secgloss/a-gly&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/windows/win32/secgloss/d-gly&#34;&gt;https://learn.microsoft.com/en-us/windows/win32/secgloss/d-gly&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists&#34;&gt;https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/4f4251cc-23b6-44b6-93ba-69688422cb06&#34;&gt;https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/4f4251cc-23b6-44b6-93ba-69688422cb06&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/7d4dac05-9cef-4563-a058-f108abecce1d&#34;&gt;https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/7d4dac05-9cef-4563-a058-f108abecce1d&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/fortra/impacket/blob/f8899e65f16c50b871863528d419cfb701a5a3e3/impacket/ldap/ldaptypes.py&#34;&gt;https://github.com/fortra/impacket/blob/f8899e65f16c50b871863528d419cfb701a5a3e3/impacket/ldap/ldaptypes.py&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://learn.microsoft.com/en-us/windows/win32/api/iads/ne-iads-ads_rights_enum&#34;&gt;https://learn.microsoft.com/en-us/windows/win32/api/iads/ne-iads-ads_rights_enum&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.installsetupconfig.com/win32programming/accesscontrollistacl2_1.html&#34;&gt;https://www.installsetupconfig.com/win32programming/accesscontrollistacl2_1.html&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>About</title>
+      <link>/about/</link>
+      <pubDate>Tue, 09 Apr 2024 00:00:00 +0000</pubDate>
+      
+      <guid>/about/</guid>
+      <description>&lt;p&gt;&lt;a href=&#34;https://github.com/hugo-theme-anubis2/hugo-theme-anubis2&#34;&gt;Anubis2&lt;/a&gt; is another simple minimalist theme for Hugo blog engine.&lt;/p&gt;
+&lt;p&gt;Written in Go, Hugo is an open source static site generator available under the &lt;a href=&#34;https://github.com/gohugoio/hugo/blob/master/LICENSE&#34;&gt;Apache License 2.0.&lt;/a&gt; Hugo supports TOML, YAML and JSON data file types, Markdown and HTML content files and uses shortcodes to add rich content. Other notable features are taxonomies, multilingual mode, image processing, custom output formats, HTML/CSS/JS minification and support for Sass SCSS workflows.&lt;/p&gt;
+&lt;p&gt;Hugo makes use of a variety of open source projects including:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/yuin/goldmark&#34;&gt;https://github.com/yuin/goldmark&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/alecthomas/chroma&#34;&gt;https://github.com/alecthomas/chroma&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/muesli/smartcrop&#34;&gt;https://github.com/muesli/smartcrop&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/spf13/cobra&#34;&gt;https://github.com/spf13/cobra&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/spf13/viper&#34;&gt;https://github.com/spf13/viper&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Hugo is ideal for blogs, corporate websites, creative portfolios, online magazines, single page applications or even a website with thousands of pages.&lt;/p&gt;
+&lt;p&gt;Hugo is for people who want to hand code their own website without worrying about setting up complicated runtimes, dependencies and databases.&lt;/p&gt;
+&lt;p&gt;Websites built with Hugo are extremely fast, secure and can be deployed anywhere including, AWS, GitHub Pages, Heroku, Netlify and any other hosting provider.&lt;/p&gt;
+&lt;p&gt;Learn more and contribute on &lt;a href=&#34;https://github.com/gohugoio&#34;&gt;GitHub&lt;/a&gt;.&lt;/p&gt;
 </description>
     </item>
     

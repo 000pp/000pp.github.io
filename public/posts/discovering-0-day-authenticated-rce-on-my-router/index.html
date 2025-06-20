@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+
+
+
+
+    
+
+
+
+
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<meta name="theme-name" content="Anubis2">
+
+<title>Discovering a 0-day Authenticated RCE on my router - PWN 2 FUN</title>
+
+<meta name="description" content="What do an H2HC talk and someone with curiosity have in common? A router to hack.">
+
+
+
+
+
+<link rel="icon" type="image/x-icon" href="//localhost:1313/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="//localhost:1313/favicon.png">
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+
+
+<style>
+  body {
+    visibility: hidden;
+    opacity: 0;
+  }
+</style>
+
+<noscript>
+  <style>
+    body {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</noscript>
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.bc0d4b6e7a72f0edf4f6e696fe84bff6c99cf7557b4513a527c1b3a6fae34f6f.css" integrity="sha256-vA1Lbnpy8O309uaW/oS/9smc91V7RROlJ8GzpvrjT28=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.9c1888ebff42c0224ce04dac10cb2c401f1b77f54f78e8d87d73c3bed781c263.css" integrity="sha256-nBiI6/9CwCJM4E2sEMssQB8bd/VPeOjYfXPDvteBwmM=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="//localhost:1313/css/style.acd606c0fce58853afe0248d37bb41acbbcdd8b1aca2412b6c0fa760da0137f3.css" integrity="sha256-rNYGwPzliFOv4CSNN7tBrLvN2LGsokErbA&#43;nYNoBN/M=">
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+    
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <script src="//localhost:1313/js/script.672e2309c296e07c18bcd08b28d797a56222ff941d65f308fba3158c44885b14.js" type="text/javascript" charset="utf-8" integrity="sha256-Zy4jCcKW4HwYvNCLKNeXpWIi/5QdZfMI&#43;6MVjESIWxQ="></script>
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header class="common-header">
+            
+                <div class="header-top">
+    <div class="header-top-left">
+        <h1 class="site-title noselect">
+    <a href="//localhost:1313/">PWN 2 FUN</a>
+</h1>
+
+        
+
+  
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    
+        <div class="theme-switcher">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-sun-high"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z" /><path d="M6.343 17.657l-1.414 1.414" /><path d="M6.343 6.343l-1.414 -1.414" /><path d="M17.657 6.343l1.414 -1.414" /><path d="M17.657 17.657l1.414 1.414" /><path d="M4 12h-2" /><path d="M12 4v-2" /><path d="M20 12h2" /><path d="M12 20v2" /></svg>
+
+
+</span>
+
+        </div>
+    
+
+    <script>
+        const STORAGE_KEY = 'user-color-scheme'
+        const defaultTheme = "auto"
+
+        let currentTheme
+        let switchButton
+        let autoDefinedScheme = window.matchMedia('(prefers-color-scheme: dark)')
+
+        function switchTheme(e) {
+            currentTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+            if (localStorage) localStorage.setItem(STORAGE_KEY, currentTheme);
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        const autoChangeScheme = e => {
+            currentTheme = e.matches ? 'dark' : 'light'
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            switchButton = document.querySelector('.theme-switcher')
+            currentTheme = detectCurrentScheme()
+
+            if (currentTheme === 'auto') {
+                autoChangeScheme(autoDefinedScheme);
+                autoDefinedScheme.addListener(autoChangeScheme);
+            } else {
+                document.documentElement.setAttribute('data-theme', currentTheme)
+            }
+
+            if (switchButton) {
+                switchButton.addEventListener('click', switchTheme, false)
+            }
+
+            showContent();
+        })
+
+        function detectCurrentScheme() {
+            if (localStorage !== null && localStorage.getItem(STORAGE_KEY)) {
+                return localStorage.getItem(STORAGE_KEY)
+            }
+            if (defaultTheme) {
+                return defaultTheme
+            }
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function showContent() {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = 1;
+        }
+
+        function changeGiscusTheme (theme) {
+            function sendMessage(message) {
+              const iframe = document.querySelector('iframe.giscus-frame');
+              if (!iframe) return;
+              iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+            }
+
+            sendMessage({
+              setConfig: {
+                theme: theme
+              }
+            });
+        }
+    </script>
+
+
+        <ul class="social-icons noselect">
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+    <li>
+            <a href="//localhost:1313/index.xml" title="RSS" rel="me">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-rss"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M4 4a16 16 0 0 1 16 16" /><path d="M4 11a9 9 0 0 1 9 9" /></svg>
+
+
+</span>
+
+            </a>
+        </li>
+    
+
+</ul>
+
+    </div>
+    <div class="header-top-right">
+
+    </div>
+</div>
+
+
+    <nav class="noselect">
+        
+        
+        <a class="" href="//localhost:1313/" title="">Home</a>
+        
+        <a class="" href="//localhost:1313/about/" title="">About</a>
+        
+        <a class="" href="//localhost:1313/tags/" title="">Tags</a>
+        
+        <a class="" href="//localhost:1313/posts/" title="">Archive</a>
+        
+    </nav>
+
+
+
+
+
+
+
+
+
+
+
+
+            
+        </header>
+        <main id="main" tabindex="-1">
+            
+    
+
+    <article class="post h-entry">
+        <div class="post-header">
+            <header>
+                
+                
+                
+                <h1 class="p-name post-title ">Discovering a 0-day Authenticated RCE on my router</h1>
+                
+
+            </header>
+            
+
+
+
+<div class="post-info noselect">
+    
+        <div class="post-date dt-published">
+            <time datetime="2025-01-10">2025-01-10</time>
+            
+        </div>
+    
+
+    <a class="post-hidden-url u-url" href="//localhost:1313/posts/discovering-0-day-authenticated-rce-on-my-router/">/posts/discovering-0-day-authenticated-rce-on-my-router/</a>
+    <a href="//localhost:1313/" class="p-name p-author post-hidden-author h-card" rel="me">map[name:000pp]</a>
+
+
+    <div class="post-taxonomies">
+        
+        
+            <ul class="post-tags">
+                
+                    
+                    <li><a href="//localhost:1313/tags/research">#research</a></li>
+                
+                    
+                    <li><a href="//localhost:1313/tags/web-exploitation">#web exploitation</a></li>
+                
+                    
+                    <li><a href="//localhost:1313/tags/reverse-engineering">#reverse engineering</a></li>
+                
+                    
+                    <li><a href="//localhost:1313/tags/exploit">#exploit</a></li>
+                
+            </ul>
+        
+        
+    </div>
+</div>
+
+        </div>
+        
+
+  
+  
+
+
+
+
+  
+  
+  
+  <details class="toc noselect">
+    <summary>Table of Contents</summary>
+    <div class="inner"><nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#escalating-from-cmdsh">Escalating from cmdsh</a></li>
+        <li><a href="#attacking-the-web-app">Attacking the Web App</a></li>
+        <li><a href="#automating-the-process">Automating the Process</a></li>
+        <li><a href="#conclusion">Conclusion</a></li>
+        <li><a href="#references">References</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+  </details>
+  
+
+
+
+<script>
+  var toc = document.querySelector(".toc");
+  if (toc) {
+    toc.addEventListener("click", function () {
+      if (event.target.tagName !== "A") {
+        event.preventDefault();
+        if (this.open) {
+          this.open = false;
+          this.classList.remove("expanded");
+        } else {
+          this.open = true;
+          this.classList.add("expanded");
+        }
+      }
+    });
+  }
+</script>
+
+        <div class="content e-content">
+            <p>Everything started when I watched a talk by Maycon Vitali at H2HC titled “Internet of Sh!t - Maycon Vitali - H2HC University 2018,” where he discussed his process of discovering vulnerabilities in a Ubiquiti router. After watching the 30-minute talk, I stopped the video, looked around, and remembered an old router I used to have and still had in my house.</p>
+<p>I immediately searched for the power cable, plugged it in next to my desk, and checked if everything worked fine. After about 5 minutes, I scanned my network and found the router&rsquo;s IP address. I made some changes and set the IP to <code>192.168.15.1</code>. With everything set up, I ran <code>nmap</code> to check the available ports and running services.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image.png">
+<p>When I saw the SSH port, I looked behind the router for any credentials and, fortunately, it had them. I tried logging in with the “admin” username, but it didn’t work, so I searched for some documentation and discovered the correct username was “support.”</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 1.png">
+<p>As shown in the image above, we couldn’t execute commands or interact with the operating system beyond the initial shell. The initial goal was to figure out how to execute commands, as I had no prior experience with hardware hacking and didn’t want to attempt extracting the firmware without understanding how to do it.</p>
+<p>After a bit of research, I discovered that you could pass a direct command after the SSH command to escape the “dumb shell” we encountered when connecting.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 2.png">
+<p>Using the <code>netstat</code> command, I checked all running ports and services. The idea here is to find some binary or service we can exploit to discover a vulnerability, but we don&rsquo;t investigate it too deeply and move on to other enumerations.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 3.png">
+<p>Through the <code>uname -a</code> command, I identified the version of the running Linux system. As you can see, it’s a fairly up-to-date kernel, and the environment is somewhat limited, so we also chose not to delve too deeply into its exploitation because, above all, our user is already part of the root group.</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>Linux (none) 4.4.115 #1 SMP Fri Jul 5 16:58:21 CST 2024 armv7l GNU/Linux
+</span></span></code></pre></div><p>Using <code>ps w</code>, I also found a bunch of interesting information. There are several processes using some config files, including some XMLs that contain virtually all the router&rsquo;s configurations, but we also didn&rsquo;t find anything of significant relevance.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 4.png">
+<p>After experimenting with the router, I discovered some issues:</p>
+<ul>
+<li>My friends and I tried different methods to get a reverse shell, but without success.</li>
+<li>Some common binaries, like <code>ls</code>, didn’t work.</li>
+<li>The entire router was running on a read-only system, so we couldn’t create a web shell in the web app’s directory.</li>
+</ul>
+<p>Not having <code>ls</code> wasn’t a problem because we still had the <code>find</code> binary. For example:</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 5.png">
+<p>When I listed the files in the <code>/tmp</code> directory, I found a file called <code>dump.txt</code> that caught my attention. Reading this file, I discovered it stored network passwords in plaintext, along with other network configurations, which is indeed quite useful if you want to access the Wi-Fi network without changing it, which I think is the best option. The contents of the file were something like this:</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 6.png">
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 7.png">
+<p>Ok, I don&rsquo;t think this is the biggest problem we have xD, but it&rsquo;s still funny to see the level of security here. Let&rsquo;s continue&hellip;</p>
+<br>
+<h3 id="escalating-from-cmdsh" >
+<div>
+    <a href="#escalating-from-cmdsh">
+        ##
+    </a>
+    Escalating from cmdsh
+</div>
+</h3>
+<p>Analyzing the processes, I discovered that the initial shell we got when accessing via SSH was called “cmdsh” and appeared to be a unique binary used to manage the SSH service. I copied the “cmdsh” binary to my local machine and opened it in Binary Ninja to understand what was happening in the background.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 8.png">
+<p>We can see that the binary looks for two variables called “LOGNAME” and “LOGFROM.” Digging further into the code, we identified the expected values for these variables</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 9.png">
+<p>The most interesting part of this code, in my opinion, is the lines:</p>
+<ul>
+<li><code>current_hidden</code> and <code>current_permission</code></li>
+</ul>
+<p>Why is this interesting? Because we can see the difference in permissions available when logged in with an “admin” or “telefonica” profile. So, before running the command <code>/bin/cmdsh</code>, we specify the values <code>LOGNAME=telefonica</code>, for example, and now the commands become available to us. =)</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 10.png">
+<br>
+<h3 id="attacking-the-web-app" >
+<div>
+    <a href="#attacking-the-web-app">
+        ##
+    </a>
+    Attacking the Web App
+</div>
+</h3>
+<p>I wasn’t successful with <code>cURL</code>, <code>wget</code>, or <code>SCP</code>. So, I decided to create a tar file, convert it to base64, and save the output locally. After this, I converted it back into a normal file and successfully retrieved the content. I created the tar file from the directory <code>/usr/shared/web</code>. Opening it in VSCode revealed the following:</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 11.png">
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 12.png">
+<p>In the end, we have a &ldquo;valid&rdquo; code that we can open in VSCode to better understand the application&rsquo;s structure, but not everything is as smooth as we imagined. This is an issue I didn&rsquo;t consider at the time I was exporting it to VSCode.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 13.png">
+<p>Of course, we couldn’t read the CGI files directly because they are compiled C files that generate a web interface (I think xD). I started exploring the available functions in the web app and found a menu called “Tools.” Accessing it, we saw options to run commands like Ping, Traceroute, and Nslookup.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 14.png">
+<p>This immediately caught my attention. I tried injecting direct commands into it, but there was a JavaScript validation that checked for valid IPs. However, we could bypass this by capturing a valid request in Burp Suite and modifying the IP parameter.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 15.png">
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 16.png">
+<p>As we observed, there was some form of protection against command injection. By examining the code, we could understand how the function worked and look for ways to bypass or understand what was happening in the background.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 17.png">
+<p>Looking at the final lines of the code, where the <code>nslookup</code> binary runs, we noticed that our input was directly concatenated into the execution. This confirmed that there was command injection. Another interesting detail was that the output was saved to the file <code>/tmp/ping_result</code>. To confirm if our commands were being executed, we needed to read this file.</p>
+<p>Returning to the web app, we kept trying to execute commands without immediate success. After a break, we discovered that the <code>&amp;</code> character wasn’t blocked. For now, we could encode the <code>&amp;</code> character with URL encoding and attempt to execute commands like this:</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>127.0.0.1%26%26id
+</span></span></code></pre></div><img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 18.png">
+<p>We received a blank response because the output was rendered in another file. We just needed to send the request and then read the content of the <code>ping_result</code> file.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 19.png">
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 20.png">
+<p>Finally, we achieved command execution. The issue here was that it was a Blind Authenticated RCE because the output was saved in <code>/tmp/ping_result</code>, and we couldn’t read this file outside SSH. The web app didn’t render the command output directly.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 21.png">
+<p>If we look at the output of our command now, we’ll be surprised by something quite unfortunate, but something we managed to solve later, which was rather &ldquo;funny&rdquo; given the ideas we came up with during this process.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 22.png">
+<p>But this wasn’t a dead end for us! Here’s what we discovered:</p>
+<ul>
+<li>The function that printed the command output removed some lines from the final result, so we couldn’t see the output without reading <code>ping_result</code> from the <code>/tmp</code> directory.</li>
+<li>There was a slight delay between command execution and when the output was saved, so we needed to wait about 5 seconds before checking the output.</li>
+</ul>
+<p>To work around this, we needed to concatenate three commands. Why? By using two <code>nslookup</code> commands, we ensured our command’s output wasn’t the last line removed by the application. =)</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 23.png">
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>127.0.0.1%26%26uname%20-a%26%26nslookup%20127.0.0.1
+</span></span></code></pre></div><img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 24.png">
+<br>
+<h3 id="automating-the-process" >
+<div>
+    <a href="#automating-the-process">
+        ##
+    </a>
+    Automating the Process
+</div>
+</h3>
+<p>Looking at the login process, we noticed the parameter <code>loginPassword</code> didn’t send the password in plaintext. Instead, it sent an MD5 hash of the password. After logging in, a <code>COOKIE_SESSION_KEY</code> was generated, which indicates that our session is valid and we are authenticated in the environment.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 25.png">
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 26.png">
+<p>Logging in again showed that the <code>loginPassword</code> value was different from the first login. Apparently, there is a function in the system that ensures the password hash doesn&rsquo;t repeat, which I believe is meant to prevent brute force attacks and similar methods.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 27.png">
+<p>Inspecting the <code>login.cgi</code> HTML source code, we found the JavaScript function that generated the MD5 hash, the function in question is called &ldquo;checkLogin,&rdquo; and it seems to mix the SID value, the original password (in plain text), and finally convert everything to MD5.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 28.png">
+<p>Refreshing the page showed that the <code>sid</code> value changed each time, this indicates that every time we access the login page, the SID will be changed, something like dynamic generation, so it&rsquo;s not possible to simply convert our password to MD5 and send it directly to the login form.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 29.png">
+<p>Our Python script needed to capture the <code>var sid</code> value, concatenate it with the password, and generate the MD5 hash. Using BeautifulSoup, we captured the <code>var sid</code> value after the <code>=</code> character with the following code:</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 30.png">
+<p>This is already enough for us to generate a valid hash when submitting it to the login form after updating the code. We executed the script and checked the response:</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 31.png">
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 32.png">
+<p>Now, with a valid <code>COOKIE_SESSION_KEY</code>, we could perform authenticated actions on the router. The final step was to replicate the process and integrate it into the script.The final result of our script will be an RCE with direct output, which made exploiting the vulnerability ten times better.</p>
+<img src="//localhost:1313/images/discovering-0-day-authenticated-rce-on-my-router/image 33.png">
+<br>
+<h3 id="conclusion" >
+<div>
+    <a href="#conclusion">
+        ##
+    </a>
+    Conclusion
+</div>
+</h3>
+<p>During this process, my friends and I realized that the most ridiculous ideas can work, like concatenating three commands and hoping for the best hahahaha xD. But honestly, it’s interesting how watching an H2HC talk sparked this desire in me to explore something I had such easy access to, and in the end, everything worked out. Obviously, all of this was possible thanks to the help of the other members of Inferi, who were exceptional in helping me brainstorm some ideas.</p>
+<br>
+<p>It’s funny that I have no experience with reverse engineering, but a little bit of guesswork and determination seems to solve everything. Of course, if I had some experience, it would have helped a lot, but that’s something for the future.</p>
+<br>
+<p>Thank you for reading this far! I hope you’ve learned something or at least enjoyed the content. Neither the script nor the vulnerability will be made available since this was just field research. But who knows? Maybe this will turn into a CVE in the future, and we’ll change our minds about publishing it.</p>
+<br>
+<h3 id="references" >
+<div>
+    <a href="#references">
+        ##
+    </a>
+    References
+</div>
+</h3>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=4_UI9zBLJp0">https://www.youtube.com/watch?v=4_UI9zBLJp0</a></li>
+</ul>
+
+        </div>
+
+    </article>
+
+    
+    
+
+    
+        
+        
+    
+
+    
+
+    
+        
+
+
+    
+
+    
+
+    
+    
+    
+
+        </main>
+        
+            <footer class="common-footer noselect">
+    
+    
+
+    <div class="common-footer-bottom">
+        
+
+        <div style="display: flex; align-items: center; gap:8px">
+            ©  000pp,  2025
+            
+        </div>
+        <div style="display:flex; align-items: center; gap:4px">
+
+            
+            
+
+            
+            
+            
+            
+
+            
+            
+
+            
+        </div>
+        
+    </div>
+
+    <p class="h-card vcard">
+
+    <a href=//localhost:1313/ class="p-name u-url url fn" rel="me">map[name:000pp]</a>
+
+    
+
+    
+</p>
+
+</footer>
+
+        
+    </div>
+</body>
+</html>

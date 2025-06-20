@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+
+
+
+
+    
+
+
+
+
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<meta name="theme-name" content="Anubis2">
+
+<title>Bypassing Flutter Certificate Pinning - PWN 2 FUN</title>
+
+<meta name="description" content="Learning how to use Frida and other tools to interact with mobile apps.">
+
+
+
+
+
+<link rel="icon" type="image/x-icon" href="//localhost:1313/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="//localhost:1313/favicon.png">
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+
+
+<style>
+  body {
+    visibility: hidden;
+    opacity: 0;
+  }
+</style>
+
+<noscript>
+  <style>
+    body {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</noscript>
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="/css/style.a141c23ada4b1ca2bc1226d02e28f8f4555d9bb68fd03ce2f049a04ae8f478a3.css" integrity="sha256-oUHCOtpLHKK8EibQLij49FVdm7aP0Dzi8EmgSuj0eKM=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="/css/style.9c1888ebff42c0224ce04dac10cb2c401f1b77f54f78e8d87d73c3bed781c263.css" integrity="sha256-nBiI6/9CwCJM4E2sEMssQB8bd/VPeOjYfXPDvteBwmM=">
+    
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="/css/style.acd606c0fce58853afe0248d37bb41acbbcdd8b1aca2412b6c0fa760da0137f3.css" integrity="sha256-rNYGwPzliFOv4CSNN7tBrLvN2LGsokErbA&#43;nYNoBN/M=">
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+    
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <script src="/js/script.672e2309c296e07c18bcd08b28d797a56222ff941d65f308fba3158c44885b14.js" type="text/javascript" charset="utf-8" integrity="sha256-Zy4jCcKW4HwYvNCLKNeXpWIi/5QdZfMI&#43;6MVjESIWxQ="></script>
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header class="common-header">
+            
+                <div class="header-top">
+    <div class="header-top-left">
+        <h1 class="site-title noselect">
+    <a href="//localhost:1313/">PWN 2 FUN</a>
+</h1>
+
+        
+
+  
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    
+        <div class="theme-switcher">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-sun-high"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z" /><path d="M6.343 17.657l-1.414 1.414" /><path d="M6.343 6.343l-1.414 -1.414" /><path d="M17.657 6.343l1.414 -1.414" /><path d="M17.657 17.657l1.414 1.414" /><path d="M4 12h-2" /><path d="M12 4v-2" /><path d="M20 12h2" /><path d="M12 20v2" /></svg>
+
+
+</span>
+
+        </div>
+    
+
+    <script>
+        const STORAGE_KEY = 'user-color-scheme'
+        const defaultTheme = "auto"
+
+        let currentTheme
+        let switchButton
+        let autoDefinedScheme = window.matchMedia('(prefers-color-scheme: dark)')
+
+        function switchTheme(e) {
+            currentTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+            if (localStorage) localStorage.setItem(STORAGE_KEY, currentTheme);
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        const autoChangeScheme = e => {
+            currentTheme = e.matches ? 'dark' : 'light'
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            changeGiscusTheme(currentTheme);
+            document.body.dispatchEvent(new CustomEvent(currentTheme + "-theme-set"));
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            switchButton = document.querySelector('.theme-switcher')
+            currentTheme = detectCurrentScheme()
+
+            if (currentTheme === 'auto') {
+                autoChangeScheme(autoDefinedScheme);
+                autoDefinedScheme.addListener(autoChangeScheme);
+            } else {
+                document.documentElement.setAttribute('data-theme', currentTheme)
+            }
+
+            if (switchButton) {
+                switchButton.addEventListener('click', switchTheme, false)
+            }
+
+            showContent();
+        })
+
+        function detectCurrentScheme() {
+            if (localStorage !== null && localStorage.getItem(STORAGE_KEY)) {
+                return localStorage.getItem(STORAGE_KEY)
+            }
+            if (defaultTheme) {
+                return defaultTheme
+            }
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function showContent() {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = 1;
+        }
+
+        function changeGiscusTheme (theme) {
+            function sendMessage(message) {
+              const iframe = document.querySelector('iframe.giscus-frame');
+              if (!iframe) return;
+              iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+            }
+
+            sendMessage({
+              setConfig: {
+                theme: theme
+              }
+            });
+        }
+    </script>
+
+
+        <ul class="social-icons noselect">
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+    <li>
+            <a href="/index.xml" title="RSS" rel="me">
+            <span class="inline-svg">
+
+    
+
+
+    
+    
+    
+    
+    
+
+    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-rss"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M4 4a16 16 0 0 1 16 16" /><path d="M4 11a9 9 0 0 1 9 9" /></svg>
+
+
+</span>
+
+            </a>
+        </li>
+    
+
+</ul>
+
+    </div>
+    <div class="header-top-right">
+
+    </div>
+</div>
+
+
+    <nav class="noselect">
+        
+        
+        <a class="" href="//localhost:1313/" title="">Home</a>
+        
+        <a class="" href="//localhost:1313/about/" title="">About</a>
+        
+        <a class="" href="//localhost:1313/tags/" title="">Tags</a>
+        
+        <a class="" href="//localhost:1313/posts/" title="">Archive</a>
+        
+    </nav>
+
+
+
+
+
+
+
+
+
+
+
+
+            
+        </header>
+        <main id="main" tabindex="-1">
+            
+    
+
+    <article class="post h-entry">
+        <div class="post-header">
+            <header>
+                
+                
+                
+                <h1 class="p-name post-title ">Bypassing Flutter Certificate Pinning</h1>
+                
+
+            </header>
+            
+
+
+
+<div class="post-info noselect">
+    
+        <div class="post-date dt-published">
+            <time datetime="2025-02-20">2025-02-20</time>
+            
+        </div>
+    
+
+    <a class="post-hidden-url u-url" href="/posts/bypass-flutter-certificate-pinning/">/posts/bypass-flutter-certificate-pinning/</a>
+    <a href="//localhost:1313/" class="p-name p-author post-hidden-author h-card" rel="me">map[name:000pp]</a>
+
+
+    <div class="post-taxonomies">
+        
+        
+            <ul class="post-tags">
+                
+                    
+                    <li><a href="/tags/research">#research</a></li>
+                
+                    
+                    <li><a href="/tags/mobile">#mobile</a></li>
+                
+                    
+                    <li><a href="/tags/reverse-engineering">#reverse engineering</a></li>
+                
+                    
+                    <li><a href="/tags/flutter">#flutter</a></li>
+                
+            </ul>
+        
+        
+    </div>
+</div>
+
+        </div>
+        
+
+  
+  
+
+
+
+
+  
+  
+  
+  <details class="toc noselect">
+    <summary>Table of Contents</summary>
+    <div class="inner"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#summary">Summary</a>
+      <ul>
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#less-talk-show-me-the-code">Less talk, show me the code!</a></li>
+        <li><a href="#ssl-pinning-for-you-not-for-me">SSL Pinning for you, not for me!</a></li>
+        <li><a href="#intercept-intercept-and-intercept">Intercept, intercept and intercept</a></li>
+      </ul>
+    </li>
+    <li><a href="#references">References</a></li>
+  </ul>
+</nav></div>
+  </details>
+  
+
+
+
+<script>
+  var toc = document.querySelector(".toc");
+  if (toc) {
+    toc.addEventListener("click", function () {
+      if (event.target.tagName !== "A") {
+        event.preventDefault();
+        if (this.open) {
+          this.open = false;
+          this.classList.remove("expanded");
+        } else {
+          this.open = true;
+          this.classList.add("expanded");
+        }
+      }
+    });
+  }
+</script>
+
+        <div class="content e-content">
+            <h2 id="summary" >
+<div>
+    <a href="#summary">
+        #
+    </a>
+    Summary
+</div>
+</h2>
+<ol>
+<li>Introduction</li>
+<li>Less talk, show me the code!</li>
+<li>SSL Pinning for you, not for me!</li>
+<li>Intercept, intercept and intercept</li>
+<li>References</li>
+</ol>
+<br>
+<h3 id="introduction" >
+<div>
+    <a href="#introduction">
+        ##
+    </a>
+    Introduction
+</div>
+</h3>
+<p>Continuing with my mobile pentest studies—and, of course, doing mobile pentests at work—it&rsquo;s pretty common to run into different mobile apps built with various programming languages. For example, you’ll find apps developed in Java, Kotlin, Flutter, Xamarin, Swift… and a bunch of others.</p>
+<p>So far, I’ve only worked with Java and Flutter apps, but I’m looking forward to exploring others. What am I getting at here? Basically, what&rsquo;s the difference between decompiling a Java app and a Flutter app? Simple: you can&rsquo;t just open Flutter apps in JADX and call it a day :(</p>
+<p>You&rsquo;ll probably find only a few class files that won’t be nearly as helpful as you&rsquo;d hope. For example, here’s the app I’m currently wrestling with:</p>
+<p><img src="img/image.png" alt="image"></p>
+<p>As you can see, we only have a <code>MainActivity</code> file, a class file with a random name, and the <code>BuildConfig</code> file (don’t forget to check the BuildConfig file—you might find something useful there). When I see this, two scenarios come to mind:</p>
+<ol>
+<li>The rest of the app is obfuscated.</li>
+<li>The app is built with Flutter.</li>
+</ol>
+<p>I went with the second option. Why? Because it&rsquo;s pretty easy to identify a Flutter app just by looking at the extracted content from the APK file (I used apktool for this) and checking the lib directory.</p>
+<p><img src="img/image%201.png" alt="image"></p>
+<p>For now, we&rsquo;re most interested in these two files: <code>libflutter.so</code> and <code>libapp.so</code>. For those who don’t know, Flutter is a software development kit created by Google, commonly used to develop applications for Android, iOS, Linux, macOS, and other platforms. However, it’s primarily popular for mobile apps.</p>
+<p>The <code>libflutter.so</code> file contains the Flutter engine, mainly developed in C++. One of its key components is Skia (a 2D graphics library), which renders the UI and displays it in the <code>FlutterView</code>, also known as the <em>Raster Thread</em>. There’s also the <em>Platform Thread</em>, which interacts with the native APIs of Android and iOS. Finally, we have the <em>UI Thread</em>, responsible for executing Dart code and managing widgets.</p>
+<p>On the other hand, <code>libapp.so</code> is unique to each Flutter application. It contains the compiled Dart project—essentially, the mobile app’s source code. This code is compiled into native machine code using AOT (Ahead-of-Time) compilation, meaning the code is translated into machine instructions before the app actually runs, typically during the production build.</p>
+<p>As stated in the Dart documentation, AOT-compiled code guarantees better performance during application execution, such as a fast startup and consistent runtime performance, unlike JIT-compiled code, which is slower at startup but can reach better performance after some time when necessary runtime optimizations occur. Naturally, during a fast development cycle, the Dart VM offers developers JIT compilation features like hot reload, live metrics collection, and debugging support, which help a lot in thoroughly testing the application.</p>
+<p><img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*oVVba1QhXL1hUBKE9sfenw.png" alt="image"></p>
+<blockquote>
+<p><a href="https://medium.com/flutter/flutter-dont-fear-the-garbage-collector-d69b3ff1ca30">https://medium.com/flutter/flutter-dont-fear-the-garbage-collector-d69b3ff1ca30</a></p></blockquote>
+<p>When apps are finally ready to be deployed to web applications or app stores, you can compile your application with the Dart AOT compiler to native ARM or x64 machine code, which, as discussed earlier, will offer better startup performance for your entire application. The AOT-compiled code will run inside the Dart runtime environment with a memory management system that employs fast garbage collection and a generational garbage collector.</p>
+<p>In the final process, the <code>libflutter.so</code> file launches the Flutter engine and sets up the environment, while the <code>libapp.so</code> file is loaded by the Flutter engine. This allows the Dart code to run within the Flutter engine, powered by <code>libflutter.so</code>.</p>
+<p><img src="img/image%202.png" alt="image"></p>
+<blockquote>
+<p>Flutter Architectural Overview - Flutter</p></blockquote>
+<br>
+<h3 id="less-talk-show-me-the-code" >
+<div>
+    <a href="#less-talk-show-me-the-code">
+        ##
+    </a>
+    Less talk, show me the code!
+</div>
+</h3>
+<p>To provide more context, if we open a generic Java application in decompilation tools like <a href="https://github.com/skylot/jadx">JADX</a> and the app does not use any obfuscation solution, the reverse-engineering process becomes extremely easy since the code is human-readable. For example, I downloaded a specific application from the Play Store and decompiled the APK file using JADX. By following the package name in the Source Code tab and accessing the Java files, you can see that everything is much easier to understand.</p>
+<p><img src="img/java-code-example.png" alt="image"></p>
+<p>Getting Flutter&rsquo;s apps source code isn’t exactly trivial. You could open the <code>libapp.so</code> file in Ghidra, IDA, BinaryNinja, or whatever tool you prefer, and try your best to figure out what&rsquo;s going on. But honestly, I prefer a different approach. It’s not a secret method, just a more efficient one (at least in my opinion).</p>
+<p>Thankfully, <a href="https://github.com/worawit">Worawit</a>, along with six other contributors, created the <a href="https://github.com/worawit/blutter">Blutter</a> project. Blutter is a Flutter reverse-engineering tool that supports arm64 and allows lazy people like us to extract more readable code and structure from a Flutter app. It’s super simple to use, though you&rsquo;ll need some libraries and dependencies set up. In my case (MacOS), I had to install <code>cmake</code>, <code>ninja</code>, <code>pkg-config</code>, <code>icu4c</code>, <code>llvm</code>, and a few others. BUT! For actually running Blutter, all you need is a Python script.</p>
+<p>As the Blutter README explains, you just need to run the Python script, specify the path to the <code>arm64-v8a</code> directory, and set an output directory:</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-css" data-lang="css"><span style="display:flex;"><span><span style="color:#ca9ee6">python3</span> <span style="color:#ca9ee6">blutter</span>.<span style="color:#e5c890">py</span> <span style="color:#ca9ee6">path</span><span style="color:#99d1db;font-weight:bold">/</span><span style="color:#ca9ee6">to</span><span style="color:#99d1db;font-weight:bold">/</span><span style="color:#ca9ee6">app</span><span style="color:#99d1db;font-weight:bold">/</span><span style="color:#ca9ee6">lib</span><span style="color:#99d1db;font-weight:bold">/</span><span style="color:#ca9ee6">arm64-v8a</span> <span style="color:#ca9ee6">out_dir</span>
+</span></span></code></pre></div><p>After that, Blutter compiles the necessary libraries and extracts some resources to execute the reverse-engineering process. Hopefully, after a few minutes, your output will look similar to mine. If any errors occur during this process or your PC crashes, make sure to read the stack trace carefully and check the Blutter GitHub repository&rsquo;s Issues tab for similar problems. For added context, I&rsquo;m running this on a MacBook, I haven&rsquo;t tried Blutter on any other OS yet.</p>
+<p><img src="img/image%203.png" alt="image"></p>
+<p>If we navigate to our previously created output directory (in this case, I named it <strong>decompiled_code</strong>) and access the files, we now see a bunch of directories. It contains all the libraries used by the app and the app itself. If you look further, you can find your targeted directory based on the application package name.</p>
+<p><img src="img/image%205.png" alt="image"></p>
+<p>The blurred directories are our target. From here, you can either dig through the countless files Blutter extracted or, like me, open the directory in VSCode for a more user-friendly overview. You&rsquo;re probably going to see a structure similar to the image below. Now it&rsquo;s 10 times easier to understand the application architecture and focus on the most important parts of the code.</p>
+<p><img src="img/image%206.png" alt="image"></p>
+<p>Now we have a much better environment for reverse engineering the mobile application and searching for vulnerabilities. I highly recommend using <a href="https://github.com/gitleaks/gitleaks">gitleaks</a> or any secret-finding tool (TruffleHog, Semgrep) to identify low-hanging fruits. I did this and found some interesting results, but that&rsquo;s not the focus of this article, so we will skip that part.</p>
+<br>
+<h3 id="ssl-pinning-for-you-not-for-me" >
+<div>
+    <a href="#ssl-pinning-for-you-not-for-me">
+        ##
+    </a>
+    SSL Pinning for you, not for me!
+</div>
+</h3>
+<p><strong>SSL Pinning</strong> (or <strong>Certificate Pinning</strong>) is a technique that helps developers secure their mobile apps from Man-in-the-Middle (MITM) attacks. It ensures that the app only trusts specific certificates instead of the entire certificate chain. Instead of trusting any valid certificate chain, the application stores a copy of the server&rsquo;s certificate or public key and verifies if the connection uses that exact certificate.</p>
+<p>In the context of SSL Pinning, there are different pinning approaches. For example, we have <strong>Public Key Pinning</strong>, which is a mechanism for sites to specify which certificate authorities have issued valid certificates for that specific site, and to reject TLS connections to those sites if the used certificate is not issued by a known-good CA. The idea is also to prevent man-in-the-middle attacks by hard-coding the public key of the server&rsquo;s SSL certificate instead of the entire certificate. In this way, the client will check if the server certificate contains the same public key that is hard-coded in the application code. The main advantage of Public Key Pinning is that even if the server certificate changes, the client will still trust the server if the public key remains the same, although it is harder to implement.</p>
+<p>Another method is <strong>SPKI Pinning</strong>. The Subject Public Key Info (SPKI) is basically the key with a bit more salt, it can include the algorithm used for encoding or other parameters. SPKI is obtained from the <strong>Certificate Signing Request (CSR)</strong>, which collects the necessary information from a pair of public and private keys. The use of SPKI Pinning is not very convenient because you will need to release a mandatory update of your app when the certificate gets renewed, which will probably make things harder to maintain. It is possible to &ldquo;bypass&rdquo; this problem if you keep the same Certificate Signing Request (CSR) on every renewal process, but that violates the key rotation principle, which is the process of replacing old encryption keys with new ones to reduce the risk of compromised keys.</p>
+<p><img src="img/image%208.png" alt="image"></p>
+<p>While analyzing the source code extracted by Blutter, I found something interesting that caught my attention. In the project files, there was a file called <code>dio_http_service_imp.dart</code>. <a href="https://pub.dev/packages/dio">Dio</a> is a popular HTTP networking package for Dart/Flutter, supporting TLS connections. From the official Dio documentation, this is the basic implementation:</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-javascript" data-lang="javascript"><span style="display:flex;"><span><span style="color:#ca9ee6">void</span> initAdapter() {
+</span></span><span style="display:flex;"><span>  <span style="color:#ca9ee6">const</span> <span style="color:#99d1db">String</span> fingerprint <span style="color:#99d1db;font-weight:bold">=</span> <span style="color:#a6d189">&#39;ee5ce1dfa7a53657c545c62b65802e4272878dabd65c0aadcf85783ebb0b4d5c&#39;</span>;
+</span></span><span style="display:flex;"><span>  dio.httpClientAdapter <span style="color:#99d1db;font-weight:bold">=</span> IOHttpClientAdapter(
+</span></span><span style="display:flex;"><span>    createHttpClient<span style="color:#99d1db;font-weight:bold">:</span> () {
+</span></span><span style="display:flex;"><span>      <span style="color:#ca9ee6">final</span> HttpClient client <span style="color:#99d1db;font-weight:bold">=</span> HttpClient(context<span style="color:#99d1db;font-weight:bold">:</span> SecurityContext(withTrustedRoots<span style="color:#99d1db;font-weight:bold">:</span> <span style="color:#ef9f76">false</span>));
+</span></span><span style="display:flex;"><span>      client.badCertificateCallback <span style="color:#99d1db;font-weight:bold">=</span> (cert, host, port) =&gt; <span style="color:#ef9f76">true</span>;
+</span></span><span style="display:flex;"><span>      <span style="color:#ca9ee6">return</span> client;
+</span></span><span style="display:flex;"><span>    },
+</span></span><span style="display:flex;"><span>    validateCertificate<span style="color:#99d1db;font-weight:bold">:</span> (cert, host, port) {
+</span></span><span style="display:flex;"><span>      <span style="color:#ca9ee6">if</span> (cert <span style="color:#99d1db;font-weight:bold">==</span> <span style="color:#ef9f76">null</span>) <span style="color:#ca9ee6">return</span> <span style="color:#ef9f76">false</span>;
+</span></span><span style="display:flex;"><span>      <span style="color:#ca9ee6">return</span> fingerprint <span style="color:#99d1db;font-weight:bold">==</span> sha256.convert(cert.der).toString();
+</span></span><span style="display:flex;"><span>    },
+</span></span><span style="display:flex;"><span>  );
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>As we can see above, we start by defining a variable called <strong>fingerprint</strong> that will contain the SHA256 hash of the public certificate key. After that, we create the HttpClient, ensuring that the SecurityContext is set with <strong>withTrustedRoots</strong> set to false so that we don&rsquo;t trust any certificate just because its root cert is trusted. Furthermore, we check if the certificate fingerprint matches the SHA256 hash and ensure that at least one certificate is being supplied.</p>
+<p>It works perfectly for servers that have a self-signed certificate, however, it will not work for external certificates issued by AWS, Let&rsquo;s Encrypt, or other third parties. Therefore, we can verify the root of the HTTPS certificate that is provided by the server. The code below is an example of using a static PEM certificate and SecurityContext. It also supports PKCS#12 certificates, but PKCS#12 certificates require a password to be used, which exposes the password in the code; hence, the project does not recommend using them in common cases.</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-javascript" data-lang="javascript"><span style="display:flex;"><span><span style="color:#ca9ee6">void</span> initAdapter() {
+</span></span><span style="display:flex;"><span>  <span style="color:#99d1db">String</span> PEM <span style="color:#99d1db;font-weight:bold">=</span> <span style="color:#a6d189">&#39;XXXXX&#39;</span>; <span style="color:#737994;font-style:italic">// Root certificate content
+</span></span></span><span style="display:flex;"><span><span style="color:#737994;font-style:italic"></span>  dio.httpClientAdapter <span style="color:#99d1db;font-weight:bold">=</span> IOHttpClientAdapter(
+</span></span><span style="display:flex;"><span>    onHttpClientCreate<span style="color:#99d1db;font-weight:bold">:</span> (_) {
+</span></span><span style="display:flex;"><span>      <span style="color:#ca9ee6">final</span> SecurityContext sc <span style="color:#99d1db;font-weight:bold">=</span> SecurityContext();
+</span></span><span style="display:flex;"><span>      sc.setTrustedCertificates(File(pathToTheCertificate));
+</span></span><span style="display:flex;"><span>      <span style="color:#ca9ee6">final</span> HttpClient client <span style="color:#99d1db;font-weight:bold">=</span> HttpClient(context<span style="color:#99d1db;font-weight:bold">:</span> sc);
+</span></span><span style="display:flex;"><span>      <span style="color:#ca9ee6">return</span> client;
+</span></span><span style="display:flex;"><span>    },
+</span></span><span style="display:flex;"><span>  );
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The most interesting part is this line <code>sc.setTrustedCertificates(File(pathToTheCertificate));</code> This indicates that the app expects a static certificate file. After reading <a href="https://medium.com/@melkia.med.taki/how-to-use-tls-ssl-in-flutter-with-dio-15eda4f80baf">this article by Mohamed Malkia</a>, I immediately searched the source code for <strong>.pem</strong> and <strong>.key</strong> extensions. And guess what? I found actual references to these files:</p>
+<p><img src="img/image%209.png" alt="image"></p>
+<p>Going back to VSCode and using the search function, I typed <code>.pem</code> in the &ldquo;Search&rdquo; field and immediately got two references in the code, again in the <code>dio_http_service_imp.dart</code> file. Acessing these files we can get more details about the usage of the Dio package.</p>
+<p><img src="img/image%2010.png" alt="image"></p>
+<p><img src="img/image%2012.png" alt="image"></p>
+<p><img src="img/image%2013.png" alt="image"></p>
+<p>The app reads the certificate bytes and implements them using Dart&rsquo;s SecurityContext methods <strong>useCertificateChainBytes</strong> and <strong>usePrivateKeyBytes</strong>. According to the documentation:</p>
+<ul>
+<li>useCertificateChainBytes: Sets the chain of X.509 certificates served by the SecureServerSocket during secure connections, including the server certificate.</li>
+<li>usePrivateKeyBytes: Sets the private key for the corresponding certificate.</li>
+</ul>
+<p><img src="img/image%2014.png" alt="image"></p>
+<p>Interestingly, the application doesn&rsquo;t use standard ports like 443, 80, or 8080. Instead, the API is hosted on port <strong>444</strong>. This is crucial for properly configuring our proxy because if we try intercepting ports 443, 80, or 8080, we would probably only capture requests from third-party sources rather than those from the targeted application. Therefore, make sure to identify where the application is actually consuming data so that no important requests are missed.</p>
+<p><img src="img/image%2015.png" alt="image"></p>
+<p>It is important to note that every Certificate Pinning mechanism can be bypassed if the attacker has the necessary time and patience. The main idea of these mechanisms is to offer more security to users, reducing risk and making attackers&rsquo; lives harder, but it will always be a cat-and-mouse game until vendors like Google and Apple develop technology to mitigate this problem (and I’m not even sure if that’s possible).</p>
+<br>
+<h3 id="intercept-intercept-and-intercept" >
+<div>
+    <a href="#intercept-intercept-and-intercept">
+        ##
+    </a>
+    Intercept, intercept and intercept
+</div>
+</h3>
+<p>After all this analysis, we&rsquo;re ready to intercept the traffic. Here&rsquo;s what we need to do:</p>
+<ol>
+<li>Create IPTables rules to redirect the traffic.</li>
+<li>Configure the proxy on our Android device (I&rsquo;m using an emulated Pixel 9 Pro).</li>
+<li>Set up Burp Suite.</li>
+<li>Use the NVISO disable-flutter-tls script.</li>
+</ol>
+<p>Starting with IPTables, IPTables is a utility program from Linux that helps users configure network rules. In our case, it&rsquo;s a really simple process—we just need to redirect the incoming traffic from port 444 to port 8080, where our Burp Suite proxy is running. The command I used for this is:</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span><span style="color:#99d1db">emu64a</span>:<span style="color:#99d1db;font-weight:bold">/</span> iptables <span style="color:#99d1db;font-weight:bold">-</span>t nat <span style="color:#99d1db;font-weight:bold">-</span>A OUTPUT <span style="color:#99d1db;font-weight:bold">-</span>p tcp <span style="color:#99d1db;font-weight:bold">--</span>dport 444 <span style="color:#99d1db;font-weight:bold">-</span>j DNAT <span style="color:#99d1db;font-weight:bold">--</span>to<span style="color:#99d1db;font-weight:bold">-</span>destination <span style="color:#99d1db;font-weight:bold">&lt;</span>local<span style="color:#99d1db;font-weight:bold">-</span>ip<span style="color:#99d1db;font-weight:bold">&gt;</span>:8080
+</span></span><span style="display:flex;"><span><span style="color:#99d1db">emu64a</span>:<span style="color:#99d1db;font-weight:bold">/</span> iptables <span style="color:#99d1db;font-weight:bold">-</span>t nat <span style="color:#99d1db;font-weight:bold">-</span>A POSTROUTING <span style="color:#99d1db;font-weight:bold">-</span>p tcp <span style="color:#99d1db;font-weight:bold">-</span>d <span style="color:#99d1db;font-weight:bold">&lt;</span>local<span style="color:#99d1db;font-weight:bold">-</span>ip<span style="color:#99d1db;font-weight:bold">&gt;</span> <span style="color:#99d1db;font-weight:bold">--</span>dport 8080 <span style="color:#99d1db;font-weight:bold">-</span>j MASQUERADE
+</span></span></code></pre></div><p>After that, we need to go to our Wi-Fi settings on our Android device and change the proxy setting from “None” to “Manual,” specifying the host and port we want. In this case, the host will be your local IP and the port will be the same as the Burp Suite proxy. This will allow our emulated device to communicate with our Burp Suite proxy client.</p>
+<p><img src="img/image%2016.png" alt="image"></p>
+<p>Now, for Burp Suite, we need to take the PEM and KEY files that are statically stored in the assets directory from the decompiled mobile app and generate a PKCS#12 file to later import into Burp Suite TLS settings. Why PKCS#12? Because Burp Suite TLS currently only supports PEM certificates.</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>openssl pkcs12 -export -out file.p12 -inkey key_file.key -in pem_file.pem -certifile pem_file.pem
+</span></span></code></pre></div><p>Here, the flags <code>-export</code> and <code>-out</code> specify that we want to write the certificate&rsquo;s content to an output file. The <code>-inkey</code> flag specifies the private key from the certificate, combined with the <code>-in</code> and <code>-certifile</code> flags to indicate to OpenSSL which files are our certificates—we can repeat the PEM certificate file here.</p>
+<p><img src="img/image%2017.png" alt="image"></p>
+<p>Now, go to your Burp Suite settings, navigate to the Network tab, and click on the “TLS” section. Scroll down to “Client TLS Certificates” and click the “Add” button to add a new certificate.</p>
+<p>In the “Destination host” input, enter the host address from the API or website whose traffic you want to intercept (you don&rsquo;t need to specify the port), and be sure to click the “File (PKCS#12)” radio button because you need to import your PKCS#12 file. After that, click the “Next” button.</p>
+<p><img src="img/image%2018.png" alt="image"></p>
+<p>Next, click the “Select file” button and locate the .p12 file you generated using the OpenSSL command. During the process of generating the file with OpenSSL, you will be prompted to set a password; you must enter the same password in the “Password” field below the “Certificate file” field.</p>
+<p><img src="img/image%2019.png" alt="image"></p>
+<p>If everything goes well, your file will be loaded and you can even see some information about the imported certificate.</p>
+<p><img src="img/image%2020.png" alt="image"></p>
+<p>Now for the final steps with Burp Suite, go to the Proxy settings and make sure the “Bind to port” is the same from the IPTables and change the “Bind to address” from “Specific addres” to “All interfaces” making sure we actually can intercept the traffic. After that, go the “Request handling” tab and check the “Support invisible proxying” checkbox.</p>
+<p><img src="img/image%2021.png" alt="image"></p>
+<p><img src="img/image%2022.png" alt="image"></p>
+<p>To finish, download the NVISOsecurity Frida script to disable Flutter’s TLS verification, <a href="https://github.com/NVISOsecurity/disable-flutter-tls-verification">you can find it here</a>. This script uses pattern matching to find <strong>ssl_verify_peer_cert</strong> in the <strong>handshake.cc</strong> file. The <strong>handshake.cc</strong> file is part of the <a href="https://github.com/google/boringssl/">BoringSSL project</a>, a fork of OpenSSL used by Chrome/Chromium and Android. To execute the script, ensure that the Frida server is running on your Android device (it can be done via ADB) and run the following command:</p>
+<div class="highlight"><pre tabindex="0" style="color:#c6d0f5;background-color:#303446;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>frida -U -f your.package.name -l disable-flutter-tls.js --no-pause
+</span></span></code></pre></div><p>Don&rsquo;t forget that you need to have the Burp Suite certificate installed on your device. There are various methods to do this, so I won&rsquo;t cover that process here; however, you can find plenty of resources online that explain how to do it.</p>
+<p><img src="img/image%2023.png" alt="image"></p>
+<p>Frida will run the app for us, so we go to Burp Suite and “HTTP History” tab we can see that now we can successfully intercept the app HTTP/HTTPS traffic.</p>
+<p><img src="img/image%2024.png" alt="image"></p>
+<br>
+<h2 id="references" >
+<div>
+    <a href="#references">
+        #
+    </a>
+    References
+</div>
+</h2>
+<ul>
+<li><a href="https://docs.flutter.dev/">https://docs.flutter.dev/</a></li>
+<li><a href="https://dart.dev/overview">https://dart.dev/overview</a></li>
+<li><a href="https://onuoha.medium.com/how-does-jit-and-aot-work-in-dart-cab2f31d9cb5">https://onuoha.medium.com/how-does-jit-and-aot-work-in-dart-cab2f31d9cb5</a></li>
+<li><a href="https://github.com/worawit/blutter">https://github.com/worawit/blutter</a></li>
+<li><a href="https://wiki.mozilla.org/SecurityEngineering/Public_Key_Pinning">https://wiki.mozilla.org/SecurityEngineering/Public_Key_Pinning</a></li>
+<li><a href="https://oleksandr-stepanov.medium.com/ssl-pinning-how-to-make-it-right-ecc5c9844215">https://oleksandr-stepanov.medium.com/ssl-pinning-how-to-make-it-right-ecc5c9844215</a></li>
+<li><a href="https://owasp.org/www-community/controls/Certificate_and_Public_Key_Pinning">https://owasp.org/www-community/controls/Certificate_and_Public_Key_Pinning</a></li>
+<li><a href="https://medium.com/@melkia.med.taki/how-to-use-tls-ssl-in-flutter-with-dio-15eda4f80baf">https://medium.com/@melkia.med.taki/how-to-use-tls-ssl-in-flutter-with-dio-15eda4f80baf</a></li>
+<li><a href="https://api.flutter.dev/flutter/dart-io/SecurityContext/usePrivateKeyBytes.html">https://api.flutter.dev/flutter/dart-io/SecurityContext/usePrivateKeyBytes.html</a></li>
+<li><a href="https://api.flutter.dev/flutter/dart-io/SecurityContext/useCertificateChainBytes.html">https://api.flutter.dev/flutter/dart-io/SecurityContext/useCertificateChainBytes.html</a></li>
+<li><a href="https://github.com/NVISOsecurity/disable-flutter-tls-verification">https://github.com/NVISOsecurity/disable-flutter-tls-verification</a></li>
+</ul>
+
+        </div>
+
+    </article>
+
+    
+    
+
+    
+        
+        
+    
+
+    
+
+    
+        
+
+
+    
+
+    
+
+    
+    
+    
+
+        </main>
+        
+            <footer class="common-footer noselect">
+    
+    
+
+    <div class="common-footer-bottom">
+        
+
+        <div style="display: flex; align-items: center; gap:8px">
+            ©  000pp,  2025
+            
+        </div>
+        <div style="display:flex; align-items: center; gap:4px">
+
+            
+            
+
+            
+            
+            
+            
+
+            
+            
+
+            
+        </div>
+        
+    </div>
+
+    <p class="h-card vcard">
+
+    <a href=//localhost:1313/ class="p-name u-url url fn" rel="me">map[name:000pp]</a>
+
+    
+
+    
+</p>
+
+</footer>
+
+        
+    </div>
+</body>
+</html>

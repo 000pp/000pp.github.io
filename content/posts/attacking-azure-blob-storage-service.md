@@ -1,12 +1,10 @@
 ---
 title: "Attacking Azure Blob Storage Services"
 date: 2024-11-22
-draft: false
 description: "Who knows what is Azure Blob Storage? And... what I can do with that as a pentester?"
 tags: ["azure", "pentest", "microsoft", "windows"]
 ---
- 
-## What is Azure and Blob?
+
 Azure, or Microsoft Azure, is a cloud computing platform maintained by Microsoft that offers a bunch of services used by many companies and individuals. Probably, the most famous solutions provided by Microsoft Azure are virtual machines, Azure Kubernetes Services (AKS), solutions for DevOps and DevSecOps, and of course, the giant integration with all other Microsoft services, for example, Active Directory, GitHub, Azure DevOps, Visual Studio, and GitHub Copilot.
 
 Now, what is Azure Blob Storage? Azure Blob Storage is a massively scalable and ~~secure~~ object storage solution for cloud-native workloads, archives, data lakes, HPC, and machine learning (I took this from the Microsoft Azure Blob Storage website). Basically, a lot of companies store their files like videos, documents, executables, logs, backup data, and others in this service and share these resources through their services like web apps, systems, etc.
