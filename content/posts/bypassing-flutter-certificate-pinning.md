@@ -36,7 +36,7 @@ When apps are finally ready to be deployed to web applications or app stores, yo
 
 In the final process, the `libflutter.so` file launches the Flutter engine and sets up the environment, while the `libapp.so` file is loaded by the Flutter engine. This allows the Dart code to run within the Flutter engine, powered by `libflutter.so`.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 2.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%202.png)
 > Flutter Architectural Overview - Flutter
 
 <br>
@@ -58,15 +58,15 @@ python3 blutter.py path/to/app/lib/arm64-v8a out_dir
 
 After that, Blutter compiles the necessary libraries and extracts some resources to execute the reverse-engineering process. Hopefully, after a few minutes, your output will look similar to mine. If any errors occur during this process or your PC crashes, make sure to read the stack trace carefully and check the Blutter GitHub repository's Issues tab for similar problems. For added context, I'm running this on a MacBook, I haven't tried Blutter on any other OS yet.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 3.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%203.png)
 
 If we navigate to our previously created output directory (in this case, I named it **decompiled_code**) and access the files, we now see a bunch of directories. It contains all the libraries used by the app and the app itself. If you look further, you can find your targeted directory based on the application package name.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 5.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%205.png)
 
-The blurred directories are our target. From here, you can either dig through the countless files Blutter extracted or, like me, open the directory in VSCode for a more user-friendly overview. You're probably going to see a structure similar to the image below. Now it's 10 times easier to understand the application architecture and focus on the most important parts of the code.
+The blurred directories are our target. From here, you can either dig through the countless files Blutter extracted or, like me, open the directory in VSCode for a more user-friendly overview. You're probably going to see a structure similar to the image%20below. Now it's 10 times easier to understand the application architecture and focus on the most important parts of the code.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 6.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%206.png)
 
 Now we have a much better environment for reverse engineering the mobile application and searching for vulnerabilities. I highly recommend using [gitleaks](https://github.com/gitleaks/gitleaks) or any secret-finding tool (TruffleHog, Semgrep) to identify low-hanging fruits. I did this and found some interesting results, but that's not the focus of this article, so we will skip that part.
 
@@ -79,7 +79,7 @@ In the context of SSL Pinning, there are different pinning approaches. For examp
 
 Another method is **SPKI Pinning**. The Subject Public Key Info (SPKI) is basically the key with a bit more salt, it can include the algorithm used for encoding or other parameters. SPKI is obtained from the **Certificate Signing Request (CSR)**, which collects the necessary information from a pair of public and private keys. The use of SPKI Pinning is not very convenient because you will need to release a mandatory update of your app when the certificate gets renewed, which will probably make things harder to maintain. It is possible to "bypass" this problem if you keep the same Certificate Signing Request (CSR) on every renewal process, but that violates the key rotation principle, which is the process of replacing old encryption keys with new ones to reduce the risk of compromised keys.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 8.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%208.png)
 
 While analyzing the source code extracted by Blutter, I found something interesting that caught my attention. In the project files, there was a file called `dio_http_service_imp.dart`. [Dio](https://pub.dev/packages/dio) is a popular HTTP networking package for Dart/Flutter, supporting TLS connections. From the official Dio documentation, this is the basic implementation:
 
@@ -120,25 +120,25 @@ void initAdapter() {
 
 The most interesting part is this line `sc.setTrustedCertificates(File(pathToTheCertificate));` This indicates that the app expects a static certificate file. After reading [this article by Mohamed Malkia](https://medium.com/@melkia.med.taki/how-to-use-tls-ssl-in-flutter-with-dio-15eda4f80baf), I immediately searched the source code for **.pem** and **.key** extensions. And guess what? I found actual references to these files:
 
-![image](/images/bypassing-flutter-certificate-pinning/image 9.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%209.png)
 
 Going back to VSCode and using the search function, I typed `.pem` in the "Search" field and immediately got two references in the code, again in the `dio_http_service_imp.dart` file. Acessing these files we can get more details about the usage of the Dio package.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 10.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2010.png)
 
-![image](/images/bypassing-flutter-certificate-pinning/image 12.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2012.png)
 
-![image](/images/bypassing-flutter-certificate-pinning/image 13.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2013.png)
 
 The app reads the certificate bytes and implements them using Dart's SecurityContext methods **useCertificateChainBytes** and **usePrivateKeyBytes**. According to the documentation:
 - useCertificateChainBytes: Sets the chain of X.509 certificates served by the SecureServerSocket during secure connections, including the server certificate.
 - usePrivateKeyBytes: Sets the private key for the corresponding certificate.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 14.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2014.png)
 
 Interestingly, the application doesn't use standard ports like 443, 80, or 8080. Instead, the API is hosted on port **444**. This is crucial for properly configuring our proxy because if we try intercepting ports 443, 80, or 8080, we would probably only capture requests from third-party sources rather than those from the targeted application. Therefore, make sure to identify where the application is actually consuming data so that no important requests are missed.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 15.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2015.png)
 
 It is important to note that every Certificate Pinning mechanism can be bypassed if the attacker has the necessary time and patience. The main idea of these mechanisms is to offer more security to users, reducing risk and making attackers' lives harder, but it will always be a cat-and-mouse game until vendors like Google and Apple develop technology to mitigate this problem (and I’m not even sure if that’s possible).
 
@@ -162,7 +162,7 @@ emu64a:/ iptables -t nat -A POSTROUTING -p tcp -d <local-ip> --dport 8080 -j MAS
 
 After that, we need to go to our Wi-Fi settings on our Android device and change the proxy setting from “None” to “Manual,” specifying the host and port we want. In this case, the host will be your local IP and the port will be the same as the Burp Suite proxy. This will allow our emulated device to communicate with our Burp Suite proxy client.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 16.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2016.png)
 
 Now, for Burp Suite, we need to take the PEM and KEY files that are statically stored in the assets directory from the decompiled mobile app and generate a PKCS#12 file to later import into Burp Suite TLS settings. Why PKCS#12? Because Burp Suite TLS currently only supports PEM certificates.
 
@@ -172,27 +172,27 @@ openssl pkcs12 -export -out file.p12 -inkey key_file.key -in pem_file.pem -certi
 
 Here, the flags `-export` and `-out` specify that we want to write the certificate's content to an output file. The `-inkey` flag specifies the private key from the certificate, combined with the `-in` and `-certifile` flags to indicate to OpenSSL which files are our certificates—we can repeat the PEM certificate file here.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 17.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2017.png)
 
 Now, go to your Burp Suite settings, navigate to the Network tab, and click on the “TLS” section. Scroll down to “Client TLS Certificates” and click the “Add” button to add a new certificate.
 
 In the “Destination host” input, enter the host address from the API or website whose traffic you want to intercept (you don't need to specify the port), and be sure to click the “File (PKCS#12)” radio button because you need to import your PKCS#12 file. After that, click the “Next” button.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 18.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2018.png)
 
 Next, click the “Select file” button and locate the .p12 file you generated using the OpenSSL command. During the process of generating the file with OpenSSL, you will be prompted to set a password; you must enter the same password in the “Password” field below the “Certificate file” field.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 19.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2019.png)
 
 If everything goes well, your file will be loaded and you can even see some information about the imported certificate.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 20.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2020.png)
 
 Now for the final steps with Burp Suite, go to the Proxy settings and make sure the “Bind to port” is the same from the IPTables and change the “Bind to address” from “Specific addres” to “All interfaces” making sure we actually can intercept the traffic. After that, go the “Request handling” tab and check the “Support invisible proxying” checkbox.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 21.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2021.png)
 
-![image](/images/bypassing-flutter-certificate-pinning/image 22.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2022.png)
 
 To finish, download the NVISOsecurity Frida script to disable Flutter’s TLS verification, [you can find it here](https://github.com/NVISOsecurity/disable-flutter-tls-verification). This script uses pattern matching to find **ssl_verify_peer_cert** in the **handshake.cc** file. The **handshake.cc** file is part of the [BoringSSL project](https://github.com/google/boringssl/), a fork of OpenSSL used by Chrome/Chromium and Android. To execute the script, ensure that the Frida server is running on your Android device (it can be done via ADB) and run the following command:
 
@@ -202,11 +202,11 @@ frida -U -f your.package.name -l disable-flutter-tls.js --no-pause
 
 Don't forget that you need to have the Burp Suite certificate installed on your device. There are various methods to do this, so I won't cover that process here; however, you can find plenty of resources online that explain how to do it.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 23.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2023.png)
 
 Frida will run the app for us, so we go to Burp Suite and “HTTP History” tab we can see that now we can successfully intercept the app HTTP/HTTPS traffic.
 
-![image](/images/bypassing-flutter-certificate-pinning/image 24.png)
+![image](/images/bypassing-flutter-certificate-pinning/image%2024.png)
 
 <br>
 
