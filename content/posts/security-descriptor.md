@@ -1,5 +1,5 @@
 +++
-title = "Security Descriptor, o que é e onde vive."
+title = "101 Security Descriptor"
 date = 2024-10-24
 [taxonomies]
 tags = ["windows", "ldap", "active directory"]
