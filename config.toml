@@ -1,31 +1,14 @@
-# serene v5.3.1
-#
-# - docs: https://github.com/isunjn/serene/blob/latest/USAGE.md
-# - check for updates: https://github.com/isunjn/serene/releases
-#
-#=========================================================================================
-
 base_url = "https://hacking4.fun"
-title = "hacking4fun"
-description = "000pp's personal blog"
 default_language = "en"
-theme = "serene"
+theme = "papaya"
 output_dir = "public"
 compile_sass = true
-minify_html = false # Keep this false, as it may cause issues with some styles
-build_search_index = false # Keep this false, search is temporarily unsupported
-generate_feeds = false # Whether to generate a feed file in root, read docs for more info about rss feed
-feed_filenames = ["feed.xml"] # "feed.xml" | "atom.xml" | "rss.xml", read docs for more info
-taxonomies = [{ name = "tags" }, { name = "categories" }]
+minify_html = false
+build_search_index = false
 
 [markdown]
 highlight_code = true
 highlight_theme = "css"
-extra_syntaxes_and_themes = ["themes/serene/highlight_themes"]
-highlight_themes_css = [
-  { theme = "serene-light", filename = "hl-light.css" },
-  { theme = "serene-dark", filename = "hl-dark.css" },
-]
 render_emoji = false
 external_links_target_blank = false
 external_links_no_follow = true
@@ -37,25 +20,82 @@ paths = "on"
 taxonomies = "on"
 anchors = "on"
 
-#=========================================================================================
-
-[extra]
-sections = [
-  { name = "posts", path = "/posts", is_external = false },
-  # { name = "tags", path = "/tags", is_external = false },
-  # { name = "github", path = "https://github.com/<your-username>", is_external = true },
+# Language configuration
+[languages.en]
+title = "hacking4fun"
+description = ""
+taxonomies = [
+    { name = "tags", feed = false },
+    { name = "categories", feed = false },
 ]
-blog_section_path = "/posts"
 
-back_link_text = "Back" # Text of the back button
-force_theme = false # false | "light" | "dark"
+[languages.en.translations]
+# Navigation
+projects = "Projects"
+blog = "Blog"
+about = "About"
+tags = "Tags"
 
-footer_copyright = "© 2025 000pp"
-footer_credits = false # Whether to show "Built with zola and serene" in footer
+# Index page
+recent_projects = "Recent Projects"
+more_projects = "More Projects"
+recent_blog_posts = "Recent Blog Posts"
+more_blog_posts = "More blog posts"
 
-not_found_error_text = "404 Not Found"
-not_found_recover_text = "« back to home »"
+# Tags and Categories
+tag = "Tag"
+to_all_tags = "To all tags"
+category = "Category"
+categories = "Categories"
+to_all_categories = "To all categories"
+view_by = "View by"
+other = "Other"
 
-reaction = false # Whether to enable anonymous emoji reactions (Note: You need to set up a working api endpoint to enable this feature)
-reaction_align = "right" # "left" | "center" | "right"
-reaction_endpoint = "https://hacking4.fun/api/reaction"
+# Pagination
+prev_page = "To newer posts"
+next_page = "To older posts"
+
+# Time
+minute = "min"
+
+# Date format
+date_format = "%B %e, %Y"
+
+# 404
+not_found = "404 - Page Not Found"
+not_found_subtitle = "The page you are looking for does not exist."
+
+# Extra configuration
+[extra]
+env = "$ZOLA_ENV"
+color_mode = "light"
+
+# Menu items configuration
+menu_items = [
+    { name = "blog", url = "$LANG_BASE_URL/blog", show_recent = true, recent_items = 999, recent_trans_key = "recent_blog_posts", more_trans_key = "more_blog_posts" },
+    { name = "tags", url = "$LANG_BASE_URL/tags" },
+]
+
+# CDN configuration
+[extra.cdn]
+font_awesome = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css"
+
+# Social/contact links
+[extra.social]
+# Uncomment and add your social media handles
+# email = "your@email.com"
+github = "000pp"
+linkedin = "dansdm"
+# twitter = "yourhandle"
+
+# Image settings
+[extra.images]
+max_width = 2500
+
+# Open Graph Protocol settings
+[extra.ogp]
+locale = "en_US"
+
+# Utterances comments
+[extra.utterances]
+enabled = false
