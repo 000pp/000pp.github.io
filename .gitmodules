@@ -1,4 +1,0 @@
-[submodule "themes/papaya"]
-	path = themes/papaya
-	url = https://github.com/justint/papaya.git
-branch = latest
